@@ -122,6 +122,6 @@ class Card:
 
     def __repr__(self):
         '''
-        Simple representation of a card for debugging.
+        Simple representation of a card for TCP messaging.
         '''
         return self.suit + self.rank
