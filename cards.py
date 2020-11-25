@@ -57,7 +57,7 @@ class Deck:
         card: Card - A Card object
         '''
         if not isinstance(card, Card):
-            raise ValueError('card must be of type `Card`')
+            raise TypeError('card must be of type `Card`')
         if card in self.deck:
             raise ValueError('cannot add duplicate card to the deck')
 
