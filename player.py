@@ -15,12 +15,139 @@ SUITS = set(['H', 'D', 'C', 'S'])
 # Char representations of rank including numbers and Jack, Queen, King, Ace
 RANKS = set(['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'])
 
+# At this point, only 5 Card Draw is available
+NUM_CARDS_IN_HAND = 5
+
 
 class Player:
     '''
-    Provides a poker player API implementation for the 
+    Provides a poker player API implementation in the form of a class.
+    This class deals with python variables, so TCP API parsing is required
+    before using these methods.
     '''
-    pass
+    # NOTE: display_hand not implemented here because that prints other players'
+    # hands to this player's terminal. That is better handled by the client code
+    # when it recieves the display_hand TCP message.
+
+    def __init__(self, wallet_amt):
+        '''
+        Creates a new Player class.
+        '''
+        self.wallet = wallet_amt
+        self.hand = Hand(NUM_CARDS_IN_HAND)
+
+    def get_action(self):
+        '''
+        Provides the player with options of what to do doing their turn. Only
+        called when the server notifies the client it is this player's turn.
+        '''
+        # TODO: Implement
+        pass
+
+    def print_menu(self):
+        '''
+        Prints a menu of commands that a player can take on their turn.
+        '''
+        # TODO: Implement
+        pass
+
+    def notify(self, message):
+        '''
+        Prints the given message to the player's terminal.
+
+        message: str - a message to print
+        '''
+        # This method is not really needed, but here for completeness.
+        # The client process could simply print the messages it recieves to the
+        # terminal.
+        print(message)
+
+    def ante(self, amt):
+        '''
+        Removes the ante amount from this players wallet. Returns True if the
+        debit was successful, returns False if the player does not have 
+        enough in their wallet to ante.
+
+        amt: int - the amount needed to ante
+        '''
+        self._debit_wallet(amt)
+
+    def ack_call(self, amt):
+        '''
+        An acknowledgement of this player's decision to call during a betting
+        round. The acknowledgement provides the player with the amount they
+        need to bet in order to meet the call amount. This amount is subtracted
+        from the player's wallet. Returns True if the amount is successfully
+        subtracted, returns False if there is not enough in the player's wallet
+        to handle the transaction.
+
+        amt: int - the amount the player needs to bet
+        '''
+        self._debit_wallet(amt)
+
+    def _debit_wallet(self, amt):
+        '''
+        Removes money from the player's wallet if able to do so.
+
+        amt: int - the amount to remove
+        '''
+        if amt < 0:
+            raise ValueError("ante amount cannot be negative")
+
+        # Check the amount is not more than the player has
+        if amt <= self.wallet:
+            self.wallet -= amt
+            return True
+
+        # Notify that the player does not have enough in their wallet
+        return False
+
+    def add_cards(self, card_list):
+        '''
+        Adds each of the cards in the list to this players hand. There must be
+        at least one card and no more than the max a hand can have. If there
+        are more cards in the list than the hand can hold (i.e. 3 cards in the
+        hand, 3 in the list), a HandFullError is thrown.
+
+        card_list: [Card] - a list of cards to add to the hand
+        '''
+        l = len(card_list)
+        if l < 1:
+            raise ValueError('must have at least one card in the list')
+        if l > NUM_CARDS_IN_HAND:
+            raise ValueError('cannot have more cards than allowed in a hand')
+
+        # Add the cards
+        for card in card_list:
+            self.hand.add_card(card)
+
+    def win_pool(self, amt):
+        '''
+        Adds betting pool winnings to this players wallet. Should only be called when
+        the player wins a round. This would be highly insecure in real life!
+
+        amt: int - the amount this player has won
+        '''
+        if amt < 0:
+            raise ValueError('amount cannot be negative')
+
+        self.wallet += amt
+
+    def ack_player_joined(self, player_name):
+        '''
+        Notifies this player that another player has joined the game.
+
+        player_name: str - the name of the player who left the game
+        '''
+        print("Player", player_name, "has joined the game.")
+
+    def ack_player_left(self, player_name):
+        '''
+        Notifies this player that another player has left the game.
+
+        player_name: str - the name of the player who left the game
+        '''
+        print("Player", player_name, "has left the game.")
 
 
 class Hand:
@@ -39,7 +166,8 @@ class Hand:
 
     def add_card(self, card):
         '''
-        Adds a card to the hand. If the hand is full, raises a HandFullError.
+        Adds a card to the hand. If the hand is full, raises a HandFullError. If
+        the given card is not a Card object, raises a TypeError.
 
         card: Card - the card to add to the hand
         '''
