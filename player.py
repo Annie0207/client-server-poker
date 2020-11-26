@@ -8,13 +8,6 @@ https://docs.google.com/document/d/1p03ydY3g0QY7WARs0TSkFAcQ-Ut0rUP-xKc40t47tTs/
 
 import cards
 
-# Char representations of suits
-# Hearts, Diamonds, Clubs, Spades
-SUITS = set(['H', 'D', 'C', 'S'])
-
-# Char representations of rank including numbers and Jack, Queen, King, Ace
-RANKS = set(['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'])
-
 # At this point, only 5 Card Draw is available
 NUM_CARDS_IN_HAND = 5
 
@@ -29,12 +22,19 @@ class Player:
     # hands to this player's terminal. That is better handled by the client code
     # when it recieves the display_hand TCP message.
 
-    def __init__(self, wallet_amt):
+    def __init__(self, wallet_amt, player_id, player_name):
         '''
         Creates a new Player class.
+
+        wallet_amt: int - the "buy in" amount that a player starts with
+        player_id: int - the id for this player, provided by the server
+        player_name: str - this player's name
         '''
         self.wallet = wallet_amt
         self.hand = Hand(NUM_CARDS_IN_HAND)
+        self.name = player_name
+        self.id = player_id
+        self.prompt = '>'
 
     def get_action(self):
         '''
@@ -48,19 +48,55 @@ class Player:
         '''
         Prints a menu of commands that a player can take on their turn.
         '''
-        # TODO: Implement
-        pass
+        intro = 'Enter a command at the prompt to choose an action:\n'
+        see_cards = (
+            'c, cards\n' + 
+            '\tview the cards in your hand\n'
+        )
+        swap = (
+            's, swap <id_1> <id_2>\n' +
+            '\tswap two cards in your hand\n'
+        )
+        see_betting = (
+            'b, bet-info\n' +
+            '\tview betting pool, highest bet so far, the amount \n' + 
+            '\tyou have bet so far, and the amount in your wallet\n'
+        )
+        check = (
+            'ch, check\n' +
+            '\tbetting: check (only allowed if you are first to bet)\n'
+        )
+        call = (
+            'cl, call\n' +
+            '\tbetting: call\n'
+        )
+        rse = (
+            'r, raise <amt>\n' +
+            '\tbetting: raise by <amt>\n'
+        )
+        fold = (
+            'f, fold\n' +
+            '\tbetting: fold\n'
+        )
+        leave = (
+            'l, leave\n' +
+            '\tleave the game\n'
+        )
+        menu = (
+            intro +
+            see_cards +
+            swap +
+            see_betting +
+            check +
+            call +
+            rse +
+            fold +
+            leave
+        )
 
-    def notify(self, message):
-        '''
-        Prints the given message to the player's terminal.
-
-        message: str - a message to print
-        '''
-        # This method is not really needed, but here for completeness.
-        # The client process could simply print the messages it recieves to the
-        # terminal.
-        print(message)
+        # Printed without newline so it is easier to swap ordering if needed.
+        # All above have newline.
+        print(menu, end='')
 
     def ante(self, amt):
         '''
@@ -133,6 +169,17 @@ class Player:
 
         self.wallet += amt
 
+    def notify(self, message):
+        '''
+        Prints the given message to the player's terminal.
+
+        message: str - a message to print
+        '''
+        # This method is not really needed, but here for completeness.
+        # The client process could simply print the messages it receives to the
+        # terminal.
+        print(message)
+
     def ack_player_joined(self, player_name):
         '''
         Notifies this player that another player has joined the game.
@@ -149,6 +196,20 @@ class Player:
         '''
         print("Player", player_name, "has left the game.")
 
+    def ack_betting_info(self, pool_amt, call_amt, current_total_bet):
+        '''
+        Displays betting info gathered from the server including the 
+        amount of money currently in the pool, how much the call amount is, 
+        and how much this player has bet so far.
+
+        pool_amt: int - The money in the current bet pool.
+        call_amt: int - The highest bet so far.
+        current_total_bet: int - The amount this player has bet so far in the round.
+        '''
+        print('Pool: ', '$', pool_amt, sep='')
+        print('Highest bet (call amount): ', '$', call_amt, sep='')
+        print('Your current bet: ', '$', current_total_bet, sep='')
+        print('Your wallet: ', '$', self.wallet, sep='')
 
 class Hand:
     '''
@@ -233,3 +294,6 @@ class HandFullError(Exception):
     Raised when a hand is full.
     '''
     pass
+
+p = Player(5, 1, "Evan")
+p.print_menu()
