@@ -20,7 +20,7 @@ class Player:
     '''
     # NOTE: display_hand not implemented here because that prints other players'
     # hands to this player's terminal. That is better handled by the client code
-    # when it recieves the display_hand TCP message.
+    # when it receives the display_hand TCP message.
 
     def __init__(self, wallet_amt, player_id, player_name):
         '''
@@ -34,15 +34,104 @@ class Player:
         self.hand = Hand(NUM_CARDS_IN_HAND)
         self.name = player_name
         self.id = player_id
-        self.prompt = '>'
+        self.prompt = '> '
 
     def get_action(self):
         '''
         Provides the player with options of what to do doing their turn. Only
         called when the server notifies the client it is this player's turn.
+        Returns a string in the form of a TCP API call to the server.
         '''
-        # TODO: Implement
-        pass
+        # Can add extra options to each command, but keep the first one
+        # the same as it is because that is the TCP API command name.
+        cards = ['cards', 'c']
+        swap = ['swap', 's']
+        bet_info = ['bet_info', 'b']
+        check = ['check', 'ch']
+        call = ['call', 'cl']
+        rse = ['raise', 'r']  # raise is a reserved word
+        fold = ['fold', 'f']
+        leave = ['leave', 'l']
+        menu = ['menu', 'm']
+        cmds = set(cards + swap + bet_info + check +
+                   call + rse + fold + leave + menu)
+
+        # Convenience variable
+        _id = ' ' + str(self.id)
+
+        # Print menu and get response
+        self.print_menu()
+        while True:
+            choice = input(self.prompt).strip()
+            choice_lst = choice.split()
+            len_args = len(choice_lst)
+            cmd = choice_lst[0]
+
+            # Check valid command
+            if cmd not in cmds:
+                print('invalid command, please try again')
+                continue
+
+            # Check commands one by one
+            if cmd in cards:
+                self.hand.print_hand()
+                # This move for player only, still has a choice to make
+                continue
+
+            if cmd in swap:
+                if len_args != 3:
+                    print('invalid command: swap takes exactly two integer arguments')
+                    continue
+
+                # Ensure args are integers
+                try:
+                    id_1 = int(choice_lst[1])
+                    id_2 = int(choice_lst[2])
+                except ValueError:
+                    print("invalid command: arguments are not integers")
+                    continue
+
+                # Perform swap
+                # This move for player only, still has a choice to make
+                self.hand.swap_cards(id_1, id_2)
+                continue
+
+            if cmd in bet_info:
+                # IMPORTANT: If this option is chosen, the method needs to be
+                # called again once the player receives the info. Without some
+                # extra multi-threading, the prompt will block the info from
+                # getting printed. So, for now this returns the API string,
+                # BUT WE STILL NEED TO CALL THIS METHOD AGAIN IN THE CLIENT.
+                return bet_info[0] + _id
+
+            if cmd in check:
+                return check[0] + _id
+
+            if cmd in call:
+                return call[0] + _id
+
+            if cmd in rse:
+                if len_args != 2:
+                    print('invalid command: raise takes exactly 1 integer argument')
+                    continue
+
+                try:
+                    int(choice_lst[1])
+                except ValueError:
+                    print("invalid command: argument is not an integer")
+                    continue
+
+                return rse[0] + _id + ' ' + choice_lst[1]
+
+            if cmd in fold:
+                return fold[0] + _id
+
+            if cmd in leave:
+                return leave[0] + _id
+
+            if cmd in menu:
+                self.print_menu()
+                continue
 
     def print_menu(self):
         '''
@@ -50,7 +139,7 @@ class Player:
         '''
         intro = 'Enter a command at the prompt to choose an action:\n'
         see_cards = (
-            'c, cards\n' + 
+            'c, cards\n' +
             '\tview the cards in your hand\n'
         )
         swap = (
@@ -58,8 +147,8 @@ class Player:
             '\tswap two cards in your hand\n'
         )
         see_betting = (
-            'b, bet-info\n' +
-            '\tview betting pool, highest bet so far, the amount \n' + 
+            'b, bet_info\n' +
+            '\tview betting pool, highest bet so far, the amount \n' +
             '\tyou have bet so far, and the amount in your wallet\n'
         )
         check = (
@@ -80,7 +169,11 @@ class Player:
         )
         leave = (
             'l, leave\n' +
-            '\tleave the game\n'
+            '\tleave the game, forfeit any bets made so far\n'
+        )
+        menu = (
+            'm, menu\n' +
+            '\tprint this menu\n'
         )
         menu = (
             intro +
@@ -91,7 +184,8 @@ class Player:
             call +
             rse +
             fold +
-            leave
+            leave +
+            menu
         )
 
         # Printed without newline so it is easier to swap ordering if needed.
@@ -123,7 +217,8 @@ class Player:
 
     def _debit_wallet(self, amt):
         '''
-        Removes money from the player's wallet if able to do so.
+        Removes money from the player's wallet if able to do so. True if 
+        successful, False if there is not enough in the wallet.
 
         amt: int - the amount to remove
         '''
@@ -200,7 +295,8 @@ class Player:
         '''
         Displays betting info gathered from the server including the 
         amount of money currently in the pool, how much the call amount is, 
-        and how much this player has bet so far.
+        how much this player has bet so far, and the amount in this player's
+        wallet.
 
         pool_amt: int - The money in the current bet pool.
         call_amt: int - The highest bet so far.
@@ -210,6 +306,7 @@ class Player:
         print('Highest bet (call amount): ', '$', call_amt, sep='')
         print('Your current bet: ', '$', current_total_bet, sep='')
         print('Your wallet: ', '$', self.wallet, sep='')
+
 
 class Hand:
     '''
@@ -247,7 +344,7 @@ class Hand:
 
         card_id: int - the 1-indexed position of the card to remove
         '''
-        if not 0 < card_id <= self.max_len:
+        if not 0 < card_id <= len(self.hand):
             raise ValueError('card_id must be a valid index (1 to len)')
 
         card = self.hand[card_id - 1]
@@ -261,9 +358,9 @@ class Hand:
         card_id_1: int - the 1-indexed position of the first card to swap
         card_id_2: int - the 1-indexed position of the second card to swap
         '''
-        if not 0 < card_id_1 <= self.max_len:
+        if not 0 < card_id_1 <= len(self.hand):
             raise ValueError('card_id_1 must be a valid index (1 to len)')
-        if not 0 < card_id_2 <= self.max_len:
+        if not 0 < card_id_2 <= len(self.hand):
             raise ValueError('card_id_2 must be a valid index (1 to len)')
 
         i = card_id_1 - 1
@@ -294,6 +391,3 @@ class HandFullError(Exception):
     Raised when a hand is full.
     '''
     pass
-
-p = Player(5, 1, "Evan")
-p.print_menu()
