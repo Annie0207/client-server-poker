@@ -8,14 +8,11 @@ https://docs.google.com/document/d/1p03ydY3g0QY7WARs0TSkFAcQ-Ut0rUP-xKc40t47tTs/
 
 import cards
 
-# At this point, only 5 Card Draw is available
-NUM_CARDS_IN_HAND = 5
-
 
 class Player:
     '''
     Provides a poker player API implementation in the form of a class.
-    This class deals with python variables, so TCP API parsing is required
+    This class deals with variables, so TCP API parsing is required
     before using these methods.
     '''
     # NOTE: display_hand not implemented here because that prints other players'
@@ -31,7 +28,7 @@ class Player:
         player_name: str - this player's name
         '''
         self.wallet = wallet_amt
-        self.hand = Hand(NUM_CARDS_IN_HAND)
+        self.hand = cards.Hand(cards.NUM_CARDS_IN_HAND)
         self.name = player_name
         self.id = player_id
         self.prompt = '> '
@@ -104,9 +101,14 @@ class Player:
                 # BUT WE STILL NEED TO CALL THIS METHOD AGAIN IN THE CLIENT.
                 return bet_info[0] + _id
 
+            # TODO: Add a way to check that if this is called, it is only
+            # allowed by the first player to bet in a round.
             if cmd in check:
                 return check[0] + _id
 
+            # TODO: Add methods to check that player has enough to bet and
+            # subtracts funds from wallet. Might be best as a client process
+            # method.
             if cmd in call:
                 return call[0] + _id
 
@@ -245,7 +247,7 @@ class Player:
         l = len(card_list)
         if l < 1:
             raise ValueError('must have at least one card in the list')
-        if l > NUM_CARDS_IN_HAND:
+        if l > cards.NUM_CARDS_IN_HAND:
             raise ValueError('cannot have more cards than allowed in a hand')
 
         # Add the cards
@@ -291,7 +293,7 @@ class Player:
         '''
         print("Player", player_name, "has left the game.")
 
-    def ack_betting_info(self, pool_amt, call_amt, current_total_bet):
+    def ack_betting_info(self, pool_amt, max_bet, current_bet):
         '''
         Displays betting info gathered from the server including the 
         amount of money currently in the pool, how much the call amount is, 
@@ -299,95 +301,10 @@ class Player:
         wallet.
 
         pool_amt: int - The money in the current bet pool.
-        call_amt: int - The highest bet so far.
-        current_total_bet: int - The amount this player has bet so far in the round.
+        max_bet: int - The highest bet so far.
+        current_bet: int - The amount this player has bet so far in the round.
         '''
         print('Pool: ', '$', pool_amt, sep='')
-        print('Highest bet (call amount): ', '$', call_amt, sep='')
-        print('Your current bet: ', '$', current_total_bet, sep='')
+        print('Highest bet (call amount): ', '$', max_bet, sep='')
+        print('Your current bet: ', '$', current_bet, sep='')
         print('Your wallet: ', '$', self.wallet, sep='')
-
-
-class Hand:
-    '''
-    Hand represents a hand of cards that a poker player might have.
-    '''
-
-    def __init__(self, num_cards):
-        '''
-        Creates an empty hand.
-
-        num_cards: int - the number of cards a hand should contain
-        '''
-        self.max_len = num_cards
-        self.hand = []
-
-    def add_card(self, card):
-        '''
-        Adds a card to the hand. If the hand is full, raises a HandFullError. If
-        the given card is not a Card object, raises a TypeError.
-
-        card: Card - the card to add to the hand
-        '''
-        if not isinstance(card, cards.Card):
-            raise TypeError('card must be of type Card')
-        if len(self.hand) >= self.max_len:
-            raise HandFullError()
-
-        self.hand.append(card)
-
-    def remove_card(self, card_id):
-        '''
-        Removes the card with the given index from the hand. The index is
-        1-indexed for user friendliness. IDs are printed for the user next
-        to each card when displayed. The card is returned after removal.
-
-        card_id: int - the 1-indexed position of the card to remove
-        '''
-        if not 0 < card_id <= len(self.hand):
-            raise ValueError('card_id must be a valid index (1 to len)')
-
-        card = self.hand[card_id - 1]
-        self.hand.remove(card)
-        return card
-
-    def swap_cards(self, card_id_1, card_id_2):
-        '''
-        Swaps two cards in a hand as one would do with a real hand of cards.
-
-        card_id_1: int - the 1-indexed position of the first card to swap
-        card_id_2: int - the 1-indexed position of the second card to swap
-        '''
-        if not 0 < card_id_1 <= len(self.hand):
-            raise ValueError('card_id_1 must be a valid index (1 to len)')
-        if not 0 < card_id_2 <= len(self.hand):
-            raise ValueError('card_id_2 must be a valid index (1 to len)')
-
-        i = card_id_1 - 1
-        j = card_id_2 - 1
-        self.hand[i], self.hand[j] = self.hand[j], self.hand[i]
-
-    def print_hand(self):
-        '''
-        Displays each card in the hand along with its ID number.
-        '''
-        for i, card in enumerate(self.hand):
-            print(i+1)
-            print(card)
-
-    def __repr__(self):
-        '''
-        Provides a simple representation of the hand.
-        '''
-        # Get the representation of each card in the hand
-        hand_repr = map(lambda card: card.__repr__(), self.hand)
-
-        # Return them as comma seperated values
-        return "Hand(" + ', '.join(hand_repr) + ")"
-
-
-class HandFullError(Exception):
-    '''
-    Raised when a hand is full.
-    '''
-    pass
