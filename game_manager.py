@@ -1,5 +1,5 @@
 '''
-The `game_manager` module contains the class GameManager that implements the
+The `game_manager` module contains the class GameStateManager that implements the
 poker API for a poker game manager created for this project. The API can be
 viewed in Google Docs here:
 https://docs.google.com/document/d/1p03ydY3g0QY7WARs0TSkFAcQ-Ut0rUP-xKc40t47tTs/edit?usp=sharing
@@ -8,7 +8,7 @@ https://docs.google.com/document/d/1p03ydY3g0QY7WARs0TSkFAcQ-Ut0rUP-xKc40t47tTs/
 import cards
 
 
-class GameManager:
+class GameStateManager:
     '''
     Implements the server side API of a multi-player poker game. 
     This class deals with variables, so TCP API parsing is required
@@ -71,7 +71,8 @@ class GameManager:
         # the client message, but it has to be passed in here.
 
         if self.next_id > self.num_players:
-            raise GameFullError('designated number of players reached, game full')
+            raise GameFullError(
+                'designated number of players reached, game full')
 
         # Get ID and increment
         p_id = self.next_id
@@ -98,7 +99,7 @@ class GameManager:
         # Ensure this player is in the game
         if player_id not in self.players:
             raise KeyError('player id not found')
-        
+
         # Set the name
         self.players[player_id][self.p_name_key] = name
 
@@ -187,7 +188,8 @@ class GameManager:
         cards in a list.
         '''
         if 0 <= num_cards <= cards.NUM_CARDS_IN_HAND:
-            raise ValueError('invalid number of cards, must be within the range of cards in a hand')
+            raise ValueError(
+                'invalid number of cards, must be within the range of cards in a hand')
         card_list = []
         for _ in range(num_cards):
             card_list.append(self.deck.deal_card())
@@ -207,7 +209,7 @@ class GameManager:
         hand = cards.Hand(num_cards)
         for card in card_list:
             hand.add_card(card)
-        
+
         self.final_hands[player_id] = hand
 
     def evaluate_hands(self):
@@ -227,6 +229,7 @@ class GameManager:
         player_id: int - The ID of the player. 
         '''
         self.bets.add_bet(player_id, self.ante_amt)
+
 
 class BetInfo:
     '''
@@ -265,7 +268,7 @@ class BetInfo:
         for key in d:
             if d[key][a] > max_bet:
                 max_bet = d[key][a]
-        
+
         for key in d:
             if d[key][a] == max_bet:
                 p_ids.append(key)
