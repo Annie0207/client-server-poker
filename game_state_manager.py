@@ -93,7 +93,10 @@ class GameStateManager:
 
     def notify_all(self, message):
         '''
-        Sends the given message to all players in the game.
+        Sends the given message to all players in the game. Keywords need to 
+        be included by the caller if they are needed.
+
+        message: str - A message to send to every player.
         '''
         for p_id in self.players:
             conn = self.players[p_id][self.p_conn_key]
