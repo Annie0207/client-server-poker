@@ -1,4 +1,5 @@
 # Generic Python Gitignore via GitHub
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
