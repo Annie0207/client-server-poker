@@ -10,6 +10,9 @@ import game_state_manager as gsm
 
 BUFF_SIZE = 512
 
+BEGIN = 'begin'
+NOTIFY = 'notify'
+
 
 def main(argv):
     # Parse command line arguments
@@ -48,7 +51,6 @@ def main(argv):
     # Get remaining players hands and evaluate winner
     # Notify players of winner, show hands (unless all but one folded)
     # Repeat steps until all players have left but one
-    pass
 
 
 def get_cmd_args(argv):
@@ -150,6 +152,16 @@ def wait_for_players(sock, manager):
         # Send ack to player
         ack = 'ack join ' + str(p_id) + ' ' + str(manager.wallet_amt)
         manager.get_player_conn(p_id).send(ack.encode())
+
+        # Notify other players
+        num = manager.get_curr_num_players()
+        num_left = max_players - num
+        msg = NOTIFY + ' Player {} has joined the game. Waiting for {} more players.'.format(
+            name, num_left)
+        manager.notify_all(msg)
+
+    manager.notify_all(BEGIN)
+
 
 if __name__ == '__main__':
     main(sys.argv)

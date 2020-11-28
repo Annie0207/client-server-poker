@@ -12,6 +12,8 @@ import player
 # Possible command options
 START = 'start'
 JOIN = 'join'
+BEGIN = 'begin'
+NOTIFY = 'notify'
 
 # Message buffer size (somewhat arbitrary, should be fine for all messages)
 BUFF_SIZE = 512
@@ -39,6 +41,8 @@ def main(argv):
 
     # If successful, set name and wait for other players to join until game starts
     player = handle_start_and_join_response(response, name)
+    print('Waiting for other players.')
+    wait_for_start(sock)
 
     # Send Ante, if enough in wallet (allow player to leave if wanted?)
     # Get cards
@@ -141,6 +145,29 @@ def handle_start_and_join_response(response, player_name):
     wallet_amt = int(response[3])
 
     return player.Player(wallet_amt, p_id, player_name)
+
+
+def wait_for_start(sock):
+    '''
+    Waits for the server to start a game. Prints any messages received while
+    waiting.
+
+    sock: socket - client socket object
+    '''
+    while True:
+        msg = sock.recv(BUFF_SIZE).decode()
+
+        if msg == BEGIN:
+            print('All players joined, starting game.')
+            break
+
+        elif msg.startswith(NOTIFY):
+            start = len(NOTIFY)
+            print(msg[start:])
+            continue
+
+        else:
+            print("unexpected!!")
 
 
 if __name__ == '__main__':
