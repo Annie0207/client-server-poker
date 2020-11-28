@@ -98,7 +98,7 @@ def wait_for_start(sock):
             break
 
         elif msg.startswith(NOTIFY):
-            start = len(NOTIFY)
+            start = len(NOTIFY) + 1  # +1 to get past space in message
             print(msg[start:])
             continue
 
@@ -110,8 +110,8 @@ def get_cmd_args(argv):
     '''
     Validates and returns command line arguments.
 
-    For `start` returns ('start', (host, port), num_players, wallet_amt, ante)
-    For `join` returns ('join', (host, port))
+    For `start` returns ('start', (host, port), num_players, wallet_amt, ante, name)
+    For `join` returns ('join', (host, port), name)
     '''
     possible_cmds = set([START, JOIN])
     cmd = argv[1]
