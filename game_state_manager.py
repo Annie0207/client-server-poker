@@ -247,7 +247,8 @@ class GameStateManager:
         Determines if a round of betting has ended or not. A round of betting is
         over if all players besides those who have folded have bet the same 
         amount, or if all players except one have folded. If the latter, the 
-        one player left has won the hand.
+        one player left has won the hand. If the former, all players must have 
+        had at least one chance to bet for a round to be over.
 
         Returns a boolean tuple indicating if betting is over and if the hand
         has been won: (betting_over, hand_won)
