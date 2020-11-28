@@ -102,6 +102,17 @@ class GameStateManager:
             conn = self.players[p_id][self.p_conn_key]
             conn.send(message.encode())
 
+    def notify_one(self, player_id, message):
+        '''
+        Sends the given player the message. Keywords need to be included by 
+        the caller if they are needed.
+
+        player_id: int - The ID of the player.
+        message: str - A message to send to the player.
+        '''
+        conn = self.players[player_id][self.p_conn_key]
+        conn.send(message.encode())
+
     def get_curr_num_players(self):
         '''
         Returns the number of players in the game currently.

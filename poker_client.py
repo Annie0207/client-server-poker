@@ -42,14 +42,16 @@ def main(argv):
 
     # If successful, set name and wait for other players to join until game starts
     player = handle_start_and_join_response(response, name)
+
     print('Waiting for other players.')
     wait_for_start(sock)
+    
     print('Players found, starting game')
 
 
 def game_play():
     '''
-    Primary gameplay functionality.
+    Primary gameplay functionality for the client.
     '''
     # Most of these should be in other functions:
     # Send Ante, if enough in wallet (allow player to leave if wanted?)

@@ -30,13 +30,16 @@ def main(argv):
 
     print("First player found. Waiting for other players to join.")
 
-    # Wait for players to join
+    # Wait for players to join and start game
     wait_for_players(sock, manager)
 
     print("Players joined. Starting game.")
 
-    # Start game
-    # Wait for antes
+def game_play():
+    '''
+    Primary gameplay functionality for the client.
+    '''
+    # Get antes
     # Deal cards to all players
     # Set first player turn
     # Repeat:
@@ -51,29 +54,7 @@ def main(argv):
     # Get remaining players hands and evaluate winner
     # Notify players of winner, show hands (unless all but one folded)
     # Repeat steps until all players have left but one
-
-
-def get_cmd_args(argv):
-    '''
-    Validates command line arguments and returns a tuple of (host, port) to
-    start the server on.
-    '''
-    if len(argv) != 3:
-        print('missing required arguments')
-        help()
-        sys.exit(1)
-
-    host = argv[1]
-    port = int(argv[2])
-    return (host, port)
-
-
-def help():
-    '''
-    Prints a usage help message.
-    '''
-    print('usage:')
-    print('poker_server.py <host> <port>')
+    pass
 
 
 def wait_for_start(sock):
@@ -161,6 +142,29 @@ def wait_for_players(sock, manager):
         manager.notify_all(msg)
 
     manager.notify_all(BEGIN)
+
+
+def get_cmd_args(argv):
+    '''
+    Validates command line arguments and returns a tuple of (host, port) to
+    start the server on.
+    '''
+    if len(argv) != 3:
+        print('missing required arguments')
+        help()
+        sys.exit(1)
+
+    host = argv[1]
+    port = int(argv[2])
+    return (host, port)
+
+
+def help():
+    '''
+    Prints a usage help message.
+    '''
+    print('usage:')
+    print('poker_server.py <host> <port>')
 
 
 if __name__ == '__main__':
