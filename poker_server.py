@@ -74,7 +74,7 @@ def wait_for_start(sock):
 
         # Ensure start message
         if parts[0] != start:
-            err = 'err start waiting to start game, received: ' + msg
+            err = 'err start waiting for start but received: ' + msg
             conn.send(err.encode())
             continue
 
@@ -118,12 +118,12 @@ def wait_for_players(sock, manager):
         # Get connection
         join = 'join'
         conn, addr = sock.accept()
-        msg = conn.recv(512).decode()
+        msg = conn.recv(BUFF_SIZE).decode()
         parts = msg.split()
 
         # Ensure join message
         if parts[0] != join:
-            err = 'err join expected join, got ' + msg
+            err = 'err join waiting for join but got ' + msg
             conn.send(err.encode())
             continue
 
@@ -157,7 +157,23 @@ def handle_betting():
     pass
 
 
-def handle_card_swap():
+def handle_check():
+    pass
+
+
+def handle_call():
+    pass
+
+
+def handle_raise():
+    pass
+
+
+def handle_betting_info():
+    pass
+
+
+def handle_card_trade():
     pass
 
 

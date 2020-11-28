@@ -121,7 +121,24 @@ def handle_betting():
     pass
 
 
-def handle_card_swap():
+
+def handle_check():
+    pass
+
+
+def handle_call():
+    pass
+
+
+def handle_raise():
+    pass
+
+
+def handle_betting_info():
+    pass
+
+
+def handle_card_trade():
     pass
 
 

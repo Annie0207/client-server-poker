@@ -54,6 +54,9 @@ class GameStateManager:
         self.final_hands = dict()
         self.next_id = 1  # incremented when players join
         self.bets = BetInfo()
+        self.turn_id = 1  # ID of the player who's turn it is
+        self.folded_ids = set()  # IDs of players who have folded during betting
+        self.left_ids = set()
 
     def join(self, connection, address_tup, player_name=''):
         '''
@@ -155,6 +158,29 @@ class GameStateManager:
         curr_bet = self.bets.get_player_bet(player_id)
 
         return (pool_amt, max_bet, curr_bet)
+
+    def increment_turn(self):
+        '''
+        Moves turn to the next player. Goes by the order players joined the game.
+        Ignores any players who have folded or left the game.
+        '''
+        num_folded = len(self.folded_ids)
+        num_left = len(self.left_ids)
+        num_out = num_folded + num_left
+        if self.num_players - num_out < 2:
+            # Turn would never change
+            return
+
+        # For readability
+        turn = self.turn_id
+
+        # Increment until valid turn found
+        turn = (turn + 1) % self.num_players
+        while (turn in self.folded_ids) or (turn in self.left_ids):
+            turn = (turn + 1) % self.num_players
+        
+        # Set new turn
+        self.turn_id = turn
 
     def leave(self, player_id):
         '''
