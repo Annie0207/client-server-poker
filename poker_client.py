@@ -26,7 +26,8 @@ def main(argv):
     server_addr = args[1]
     if cmd == START:
         num_players, wallet_amt, ante, name = args[2:]
-        msg = '{} {} {} {} {}'.format(START, num_players, wallet_amt, ante, name)
+        msg = '{} {} {} {} {}'.format(
+            START, num_players, wallet_amt, ante, name)
     else:
         name = args[2]
         msg = '{} {}'.format(JOIN, name)
@@ -43,7 +44,13 @@ def main(argv):
     player = handle_start_and_join_response(response, name)
     print('Waiting for other players.')
     wait_for_start(sock)
+    print('Players found, starting game')
 
+
+def game_play():
+    '''
+    Primary gameplay functionality.
+    '''
     # Send Ante, if enough in wallet (allow player to leave if wanted?)
     # Get cards
     # Allow player to swap cards until ready (set time limit (1 min?))
@@ -55,6 +62,7 @@ def main(argv):
     # If still in game, send hand to server for evaluation
     # Get game result
     # Start next hand
+    pass
 
 
 def get_cmd_args(argv):
@@ -158,7 +166,6 @@ def wait_for_start(sock):
         msg = sock.recv(BUFF_SIZE).decode()
 
         if msg == BEGIN:
-            print('All players joined, starting game.')
             break
 
         elif msg.startswith(NOTIFY):
@@ -167,7 +174,7 @@ def wait_for_start(sock):
             continue
 
         else:
-            print("unexpected!!")
+            print("Unexpected message:", msg)
 
 
 if __name__ == '__main__':
