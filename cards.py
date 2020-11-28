@@ -17,6 +17,7 @@ RANKS = set(['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'])
 # At this point, only 5 Card Draw is available
 NUM_CARDS_IN_HAND = 5
 
+
 class Deck:
     '''
     Represents a standard 52 card deck of playing cards. It does not include
@@ -215,6 +216,7 @@ class HandFullError(Exception):
     Raised when a hand is full.
     '''
     pass
+
 
 class DeckEmptyError(Exception):
     '''
