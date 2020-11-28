@@ -65,6 +65,47 @@ def game_play():
     pass
 
 
+def handle_start_and_join_response(response, player_name):
+    '''
+    Handles the server response from a start or join call. If join successfull,
+    gets the player ID, asks for a name, and returns a new player object.
+    '''
+    response = response.strip().split()
+
+    # Ensure success
+    if len(response) != 4 or response[0] != 'ack' or response[1] != 'join':
+        print('fatal error:', ' '.join(response))
+        sys.exit(1)
+
+    # Get assigned ID and wallet amount (provided by server for join)
+    p_id = int(response[2])
+    wallet_amt = int(response[3])
+
+    return player.Player(wallet_amt, p_id, player_name)
+
+
+def wait_for_start(sock):
+    '''
+    Waits for the server to start a game. Prints any messages received while
+    waiting.
+
+    sock: socket - client socket object
+    '''
+    while True:
+        msg = sock.recv(BUFF_SIZE).decode()
+
+        if msg == BEGIN:
+            break
+
+        elif msg.startswith(NOTIFY):
+            start = len(NOTIFY)
+            print(msg[start:])
+            continue
+
+        else:
+            print("Unexpected message:", msg)
+
+
 def get_cmd_args(argv):
     '''
     Validates and returns command line arguments.
@@ -134,47 +175,6 @@ def help():
     print('poker_client.py start <host> <port> <num_players> <wallet_amt> <ante>')
     print('or')
     print('poker_client.py join <host> <port>')
-
-
-def handle_start_and_join_response(response, player_name):
-    '''
-    Handles the server response from a start or join call. If join successfull,
-    gets the player ID, asks for a name, and returns a new player object.
-    '''
-    response = response.strip().split()
-
-    # Ensure success
-    if len(response) != 4 or response[0] != 'ack' or response[1] != 'join':
-        print('fatal error:', ' '.join(response))
-        sys.exit(1)
-
-    # Get assigned ID and wallet amount (provided by server for join)
-    p_id = int(response[2])
-    wallet_amt = int(response[3])
-
-    return player.Player(wallet_amt, p_id, player_name)
-
-
-def wait_for_start(sock):
-    '''
-    Waits for the server to start a game. Prints any messages received while
-    waiting.
-
-    sock: socket - client socket object
-    '''
-    while True:
-        msg = sock.recv(BUFF_SIZE).decode()
-
-        if msg == BEGIN:
-            break
-
-        elif msg.startswith(NOTIFY):
-            start = len(NOTIFY)
-            print(msg[start:])
-            continue
-
-        else:
-            print("Unexpected message:", msg)
 
 
 if __name__ == '__main__':
