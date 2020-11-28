@@ -45,7 +45,7 @@ def main(argv):
 
     print('Waiting for other players.')
     wait_for_start(sock)
-    
+
     print('Players found, starting game')
 
 
@@ -107,6 +107,22 @@ def wait_for_start(sock):
 
         else:
             print("Unexpected message:", msg)
+
+
+def handle_antes():
+    pass
+
+
+def handle_deal():
+    pass
+
+
+def handle_betting():
+    pass
+
+
+def handle_card_swap():
+    pass
 
 
 def get_cmd_args(argv):

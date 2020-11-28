@@ -35,6 +35,7 @@ def main(argv):
 
     print("Players joined. Starting game.")
 
+
 def game_play():
     '''
     Primary gameplay functionality for the client.
@@ -142,6 +143,26 @@ def wait_for_players(sock, manager):
         manager.notify_all(msg)
 
     manager.notify_all(BEGIN)
+
+
+def handle_antes():
+    pass
+
+
+def handle_deal():
+    pass
+
+
+def handle_betting():
+    pass
+
+
+def handle_card_swap():
+    pass
+
+
+def handle_evaluate_winner():
+    pass
 
 
 def get_cmd_args(argv):
