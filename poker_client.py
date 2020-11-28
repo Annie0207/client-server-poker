@@ -51,6 +51,7 @@ def game_play():
     '''
     Primary gameplay functionality.
     '''
+    # Most of these should be in other functions:
     # Send Ante, if enough in wallet (allow player to leave if wanted?)
     # Get cards
     # Allow player to swap cards until ready (set time limit (1 min?))
