@@ -229,9 +229,7 @@ class GameStateManager:
         player_id: int - The ID of the player.
         '''
         # Currently doesn't need to do anything.
-        # Might need to move turns depending on betting implementation,
-        # But I think that should be done separate from the methods to update
-        # state.
+        # Might need to move turns depending on betting implementation
         pass
 
     def bet_fold(self, player_id):
@@ -241,9 +239,19 @@ class GameStateManager:
         player_id: int - The ID of the player.
         '''
         # Currently doesn't need to do anything.
-        # Might need to move turns depending on betting implementation,
-        # But I think that should be done separate from the methods to update
-        # state.
+        # Might need to move turns depending on betting implementation
+        pass
+
+    def is_betting_over(self):
+        '''
+        Determines if a round of betting has ended or not. A round of betting is
+        over if all players besides those who have folded have bet the same 
+        amount, or if all players except one have folded. If the latter, the 
+        one player left has won the hand.
+
+        Returns a boolean tuple indicating if betting is over and if the hand
+        has been won: (betting_over, hand_won)
+        '''
         pass
 
     def get_cards(self, num_cards):
