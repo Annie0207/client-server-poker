@@ -47,11 +47,15 @@ def main(argv):
     wait_for_start(sock)
 
     print('Players found, starting game')
+    game_play(sock, player)
 
 
-def game_play():
+def game_play(sock, player):
     '''
     Primary gameplay functionality for the client.
+
+    sock: socket - client socket object
+    player: Player - the player object
     '''
     # Most of these should be in other functions:
     # Send Ante, if enough in wallet (allow player to leave if wanted?)

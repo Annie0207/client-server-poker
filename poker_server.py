@@ -34,11 +34,15 @@ def main(argv):
     wait_for_players(sock, manager)
 
     print("Players joined. Starting game.")
+    game_play(sock, manager)
 
 
-def game_play():
+def game_play(sock, manager):
     '''
     Primary gameplay functionality for the client.
+
+    sock: socket - server socket
+    manager: GameStateManager - the game manager object
     '''
     # Get antes
     # Deal cards to all players
