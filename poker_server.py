@@ -3,11 +3,35 @@ The `poker_server` module contains the business logic that allows the server
 to communicate with poker clients and allow gameplay.
 '''
 
-def main():
+import sys
+import socket
+
+import game_state_manager as gsm
+
+BUFF_SIZE = 512
+
+
+def main(argv):
     # Parse command line arguments
-    # Verify valid arguments
+    addr = get_cmd_args(argv)
+
+    # Setup server
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(addr)
+    sock.listen()
+
+    print('Server started, waiting for first player.')
+
     # Wait for `start` from a player and set-up game
-    # Wait for players to join and notify waiting players
+    manager = wait_for_start(sock)
+
+    print("First player found. Waiting for other players to join.")
+
+    # Wait for players to join
+    wait_for_players(sock, manager)
+
+    print("Players joined. Starting game.")
+
     # Start game
     # Wait for antes
     # Deal cards to all players
@@ -26,5 +50,106 @@ def main():
     # Repeat steps until all players have left but one
     pass
 
+
+def get_cmd_args(argv):
+    '''
+    Validates command line arguments and returns a tuple of (host, port) to
+    start the server on.
+    '''
+    if len(argv) != 3:
+        print('missing required arguments')
+        help()
+        sys.exit(1)
+
+    host = argv[1]
+    port = int(argv[2])
+    return (host, port)
+
+
+def help():
+    '''
+    Prints a usage help message.
+    '''
+    print('usage:')
+    print('poker_server.py <host> <port>')
+
+
+def wait_for_start(sock):
+    '''
+    Makes the server wait until it gets a successful start command from a 
+    client, then creates a GameStateManager and returns it.
+
+    sock: socket - server socket
+    '''
+    while True:
+        # Get connection
+        start = 'start'
+        conn, addr = sock.accept()
+        msg = conn.recv(512).decode()
+        parts = msg.split()
+
+        # Ensure start message
+        if parts[0] != start:
+            err = 'err start waiting to start game, received: ' + msg
+            conn.send(err.encode())
+            continue
+
+        # Extract provided args
+        try:
+            # Extract
+            num_players, wallet_amt, ante_amt, name = parts[1:]
+            num_players = int(num_players)
+            wallet_amt = int(wallet_amt)
+            ante_amt = int(ante_amt)
+
+            # Validate
+            if (not (2 <= num_players <= 5)) or (wallet_amt < 5):
+                raise ValueError()
+        except:
+            err = 'err start invalid arguments'
+            conn.send(err.encode())
+            continue
+
+        # Create game manager and add the first player
+        manager = gsm.GameStateManager(num_players, wallet_amt, ante_amt)
+        p_id = manager.join(conn, addr, name)
+
+        # Send ack to player
+        ack = 'ack join ' + str(p_id) + ' ' + str(wallet_amt)
+        manager.get_player_conn(p_id).send(ack.encode())
+
+        return manager  # breaks loop
+
+
+def wait_for_players(sock, manager):
+    '''
+    Makes server wait for players to join until the number of players is the 
+    same as that specified during the start.
+
+    sock: socket - server socket
+    manager: GameStateManager - a game state manager
+    '''
+    max_players = manager.num_players
+    while manager.get_curr_num_players() < max_players:
+        # Get connection
+        join = 'join'
+        conn, addr = sock.accept()
+        msg = conn.recv(512).decode()
+        parts = msg.split()
+
+        # Ensure join message
+        if parts[0] != join:
+            err = 'err join expected join, got ' + msg
+            conn.send(err.encode())
+            continue
+
+        # Add player
+        name = parts[1]
+        p_id = manager.join(conn, addr, name)
+
+        # Send ack to player
+        ack = 'ack join ' + str(p_id) + ' ' + str(manager.wallet_amt)
+        manager.get_player_conn(p_id).send(ack.encode())
+
 if __name__ == '__main__':
-    main()
+    main(sys.argv)

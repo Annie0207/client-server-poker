@@ -28,6 +28,7 @@ class GameStateManager:
         # Player info
         self.p_addr_key = 'addr'
         self.p_name_key = 'name'
+        self.p_conn_key = 'conn'
 
         # Game specific set up
         self.start(num_players, wallet_amt, ante_amt)
@@ -54,7 +55,7 @@ class GameStateManager:
         self.next_id = 1  # incremented when players join
         self.bets = BetInfo()
 
-    def join(self, address_tup, player_name=''):
+    def join(self, connection, address_tup, player_name=''):
         '''
         Adds a player to the game and returns their generated ID. Can optionally 
         provide the player's name here as a convenience, in addition to the 
@@ -81,13 +82,28 @@ class GameStateManager:
         # Create a player as a dict
         player = {
             self.p_addr_key: address_tup,
-            self.p_name_key: player_name
+            self.p_name_key: player_name,
+            self.p_conn_key: connection
         }
 
         # Add to the players group
         self.players[p_id] = player
 
         return p_id
+
+    def get_curr_num_players(self):
+        '''
+        Returns the number of players in the game currently.
+        '''
+        return len(self.players)
+
+    def get_player_conn(self, player_id):
+        '''
+        Gets the connection object for a specific player.
+
+        player_id: int - The ID of the player.
+        '''
+        return self.players[player_id][self.p_conn_key]
 
     def set_name(self, player_id, name):
         '''

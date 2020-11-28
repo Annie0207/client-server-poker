@@ -4,11 +4,43 @@ communicate with the poker server (game manager) and play a game of poker with
 others.
 '''
 
-def main():
-    # Parse command line args & validate
-    # Get server response for `start` or `join`
+import sys
+import socket
+
+import player
+
+# Possible command options
+START = 'start'
+JOIN = 'join'
+
+# Message buffer size (somewhat arbitrary, should be fine for all messages)
+BUFF_SIZE = 512
+
+
+def main(argv):
+    # Parse command line args
+    args = get_cmd_args(argv)
+    cmd = args[0]
+    server_addr = args[1]
+    if cmd == START:
+        num_players, wallet_amt, ante, name = args[2:]
+        msg = '{} {} {} {} {}'.format(START, num_players, wallet_amt, ante, name)
+    else:
+        name = args[2]
+        msg = '{} {}'.format(JOIN, name)
+
+    # Connect to server
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(server_addr)
+
+    # Send message and wait for response
+    sock.send(msg.encode())
+    response = sock.recv(BUFF_SIZE).decode()
+
     # If successful, set name and wait for other players to join until game starts
-    # Send Ante, if enough in wallet
+    player = handle_start_and_join_response(response, name)
+
+    # Send Ante, if enough in wallet (allow player to leave if wanted?)
     # Get cards
     # Allow player to swap cards until ready (set time limit (1 min?))
     # Wait until this player's turn, print notifications of other players' choices
@@ -18,7 +50,98 @@ def main():
     # Second round of betting (unless round ended in last bet by all players folding but one)
     # If still in game, send hand to server for evaluation
     # Get game result
-    pass
+    # Start next hand
+
+
+def get_cmd_args(argv):
+    '''
+    Validates and returns command line arguments.
+
+    For `start` returns ('start', (host, port), num_players, wallet_amt, ante)
+    For `join` returns ('join', (host, port))
+    '''
+    possible_cmds = set([START, JOIN])
+    cmd = argv[1]
+
+    # Ensure valid command
+    if cmd not in possible_cmds:
+        print('unknown command', cmd)
+        help()
+        sys.exit(1)
+
+    # Extract host, port
+    try:
+        host = argv[2]
+        port = int(argv[3])
+        server_addr = (host, port)
+    except IndexError:
+        print("host and port of server are required")
+        help()
+        sys.exit(1)
+
+    # Get `start` args
+    if cmd == START:
+        try:
+            # Extract the args
+            num_players = argv[4]
+            wallet_amt = argv[5]
+            ante = argv[6]
+            name = argv[7]
+
+            # Convert to ints
+            num_players = int(num_players)
+            wallet_amt = int(wallet_amt)
+            ante = int(ante)
+
+            return (cmd, server_addr, num_players, wallet_amt, ante, name)
+        except IndexError:
+            print("required arguments missing")
+            help()
+            sys.exit(1)
+        except ValueError:
+            print("num_players, wallet_amt and ante must be integers")
+            help()
+            sys.exit(1)
+
+    # Get `join` args
+    if cmd == JOIN:
+        name = argv[4]
+        return (cmd, server_addr, name)
+
+    # Unexpected error if this is reached
+    print("something unexpected happened, please try again")
+    help()
+    sys.exit(1)
+
+
+def help():
+    '''
+    Prints a usage help message.
+    '''
+    print('usage:')
+    print('poker_client.py start <host> <port> <num_players> <wallet_amt> <ante>')
+    print('or')
+    print('poker_client.py join <host> <port>')
+
+
+def handle_start_and_join_response(response, player_name):
+    '''
+    Handles the server response from a start or join call. If join successfull,
+    gets the player ID, asks for a name, and returns a new player object.
+    '''
+    response = response.strip().split()
+
+    # Ensure success
+    if len(response) != 4 or response[0] != 'ack' or response[1] != 'join':
+        print('fatal error:', ' '.join(response))
+        sys.exit(1)
+
+    # Get assigned ID and wallet amount (provided by server for join)
+    p_id = int(response[2])
+    wallet_amt = int(response[3])
+
+    return player.Player(wallet_amt, p_id, player_name)
+
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv)
