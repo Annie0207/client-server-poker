@@ -111,6 +111,7 @@ def wait_for_start(sock):
 
         else:
             print("Unexpected message:", msg)
+            break
 
 
 def handle_antes():
@@ -123,7 +124,6 @@ def handle_deal():
 
 def handle_betting():
     pass
-
 
 
 def handle_check():

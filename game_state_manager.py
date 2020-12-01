@@ -228,8 +228,6 @@ class GameStateManager:
 
         player_id: int - The ID of the player.
         '''
-        # Currently doesn't need to do anything.
-        # Might need to move turns depending on betting implementation
         pass
 
     def bet_fold(self, player_id):
@@ -238,8 +236,6 @@ class GameStateManager:
 
         player_id: int - The ID of the player.
         '''
-        # Currently doesn't need to do anything.
-        # Might need to move turns depending on betting implementation
         pass
 
     def is_betting_over(self):
@@ -253,6 +249,7 @@ class GameStateManager:
         Returns a boolean tuple indicating if betting is over and if the hand
         has been won: (betting_over, hand_won)
         '''
+        # The above description is just a suggestion
         pass
 
     def get_cards(self, num_cards):

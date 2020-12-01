@@ -5,6 +5,7 @@ to communicate with poker clients and allow gameplay.
 
 import sys
 import socket
+import time
 
 import game_state_manager as gsm
 
@@ -138,6 +139,12 @@ def wait_for_players(sock, manager):
         # Send ack to player
         ack = 'ack join ' + str(p_id) + ' ' + str(manager.wallet_amt)
         manager.get_player_conn(p_id).send(ack.encode())
+
+        # Sleeping here to ensure the ack message does not get concatenated
+        # with the notify message below. Since TCP is a stream, need to build
+        # in some seperation or else they will become a single message and
+        # cause errors.
+        time.sleep(0.1)
 
         # Notify other players
         num = manager.get_curr_num_players()
