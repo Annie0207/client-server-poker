@@ -257,7 +257,7 @@ class GameStateManager:
         Gets and removes the given number of cards from the game deck. Returns
         cards in a list.
         '''
-        if 0 <= num_cards <= cards.NUM_CARDS_IN_HAND:
+        if not num_cards >= 0 and num_cards <= cards.NUM_CARDS_IN_HAND:
             raise ValueError(
                 'invalid number of cards, must be within the range of cards in a hand')
         card_list = []

@@ -7,6 +7,7 @@ import sys
 import socket
 
 import player
+import cards
 
 # Possible command options
 START = 'start'
@@ -74,7 +75,8 @@ def game_play(sock, player):
 
     # pass
     handle_antes(sock, player)
-    # pass 
+    handle_deal(sock, player)
+    
 
 def handle_start_and_join_response(response, player_name):
     '''
@@ -128,43 +130,73 @@ def handle_antes(sock, player):
     the server so it can add the ante to the betting pool. If a player opts to leave the game, 
     the program invokes the leave API method on the server.
 
-    amt: int - The ante amount.
-    get_response: boolean - If true, the player is asked if they want to ante (or leave the game). 
-    If false, the ante is taken automatically.
+    sock: the socket
+    player: the player
 
     '''
+    # get the response from server and parse ante_amt and get_response 
     response = sock.recv(BUFF_SIZE).decode()
     response = response.strip().split()
     ante_amt = int(response[0])
     get_response = int(response[1])
 
+    # get_response = 1, means give player the right to choose leave or ante the game
     if get_response == 1:
         while True:
             resp = input('Do you want to ante or leave the game？ \n')
             if resp == 'leave':
                 msg = 'leave {}'.format(player.id)
-                res = sock.send(msg.encode())
+                sock.send(msg.encode())
                 print('player {} leave game'.format(player.id))
                 break
             elif resp == 'ante':
-                msg = 'ante {} {}'.format(
-                player.id, ante_amt)
-                res = sock.send(msg.encode())
-                print('player {} ante {}'.format(player.id, ante_amt))
+                ante_helper(sock, player, ante_amt)        
                 break
             else:
                 continue
-    else:
-        player.ante(ante_amt)
+    else: # default get_response = 0, every player ante the game 
+        ante_helper(sock, player, ante_amt)  
+
+def ante_helper(sock, player, ante_amt):
+    ante_result = player.ante(ante_amt)
+    if ante_result:
         msg = 'ante {} {}'.format(
-            player.id, ante_amt)
-        res = sock.send(msg.encode())
+        player.id, ante_amt)
+
+        sock.send(msg.encode())
         print('player {} ante {}'.format(player.id, ante_amt))
+    else:
+        msg = 'leave {}'.format(player.id)
+        sock.send(msg.encode())
+        print('player {} ante failed and leave game'.format(player.id)) 
+
 
 def handle_deal(sock, player):
-    # response = sock.recv(BUFF_SIZE).decode()
+    '''
+    Get the cards from deck and add to the player
 
-    pass
+    sock: the socket
+    player: the player
+    '''
+    # receive deal from deck
+    deal = sock.recv(BUFF_SIZE).decode()
+    print(deal)
+    deal = deal.strip().split()
+    card_list = []
+
+    # creat card from deal and add to card list
+    for repr in deal:
+        card = cards.Card(repr[0], repr[1:])
+        print(card)
+        card_list.append(card)
+
+    # add card_list to player 
+    player.add_cards(card_list)
+    print('Player {} get cards from deck successfully'.format(player.id))
+
+    # info server the player received cards
+    msg = 'Received'
+    sock.send(msg.encode())
 
 
 def handle_betting():

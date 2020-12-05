@@ -13,7 +13,7 @@ BUFF_SIZE = 512
 
 BEGIN = 'begin'
 NOTIFY = 'notify'
-
+CARD_AMOUNT = 5
 
 def main(argv):
     # Parse command line arguments
@@ -61,7 +61,17 @@ def game_play(sock, manager):
     # Notify players of winner, show hands (unless all but one folded)
     # Repeat steps until all players have left but one
     # pass
+    # while manager.get_curr_num_players() > 1: 
     handle_antes(sock, manager)
+    handle_deal(manager)
+        #find first player and set the sequence 
+        #handle betting // call raise fold leave  
+        #check get_curr_num_players == 1, get winner: notify :  continue
+        #get_curr_num_players > 1 : 
+            #swap cards
+            #second betting
+            #check get_curr_num_players == 1, get winner: notify :  continue
+            #evaluate winner -> notify winner 
 
 
 def wait_for_start(sock):
@@ -183,13 +193,30 @@ def handle_antes(sock, manager):
             p_id = int(parts[1])
             ante = int(parts[2])
             manager.ack_ante(ante)
-            print('acknowledge player {} ante'.format(p_id))
+            print('Acknowledge player {} ante'.format(p_id))
 
 
+def handle_deal(manager):
+    '''
+    Each player will get 5 cards. Since all cards are shuffled, the card will be distributed by current sequence
+    Note: no fold is considered as no player can call fold at this time
+    '''
+    for p_id, value in manager.players.items() :
+        cards = manager.get_cards(CARD_AMOUNT)
+        print(cards)
+        conn = value['conn']
+        msg = ""
+        for card in cards:
+            msg += card.__repr__() + " "
+            print(card.__str__())
+        conn.send(msg.encode())
+        response = conn.recv(512).decode()
+        if response == 'Received' :
+            manager.store_hand(p_id, cards)
+            print("cards received to {}".format(value['name']))
 
-def handle_deal():
-    pass
-
+    print("Card sent complete")
+    
 
 def handle_betting():
 
