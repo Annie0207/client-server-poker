@@ -45,22 +45,23 @@ def game_play(sock, manager):
     sock: socket - server socket
     manager: GameStateManager - the game manager object
     '''
-    # Get antes
-    # Deal cards to all players
-    # Set first player turn
-    # Repeat:
-    #   Notify player, wait for choice
+    # Get antes 
+    # Deal cards to all players // manager.get_cards sock.send()
+    # Set first player turn //
+    # Repeat: //
+    #   Notify player, wait for choice // call||fold||leave, call||raise||fold||leave
     #   Handle choice
     #   Cycle turn
     #   Until betting ends
-    # Notify betting round over
-    # Wait for clients to choose cards to swap
-    #   assuming more than one player still in the game
+    # Notify betting round over  //check_win
+    # Wait for clients to choose cards to swap //repeat player_num times
+    #   assuming more than one player still in the game 
     # Second betting round
     # Get remaining players hands and evaluate winner
     # Notify players of winner, show hands (unless all but one folded)
     # Repeat steps until all players have left but one
-    pass
+    # pass
+    handle_antes(sock, manager)
 
 
 def wait_for_start(sock):
@@ -152,12 +153,38 @@ def wait_for_players(sock, manager):
         msg = NOTIFY + ' Player {} has joined the game. Waiting for {} more players.'.format(
             name, num_left)
         manager.notify_all(msg)
+        time.sleep(0.1)
 
     manager.notify_all(BEGIN)
+    time.sleep(0.1)
 
 
-def handle_antes():
-    pass
+def handle_antes(sock, manager):
+    '''
+    Call manager
+    '''
+    # wallet_amt = manager.wallet_amt # need implementation
+    ante_amt = manager.ante_amt # need implementation
+    get_response = 0
+    msg = str(ante_amt) + " " + str(get_response)
+    manager.notify_all(msg)
+    time.sleep(0.1)
+    
+    count = manager.num_players
+    for id in range(1, count + 1):
+        conn = manager.players[id]['conn']
+        msg = conn.recv(BUFF_SIZE).decode()
+        parts = msg.split()
+
+        if get_response == 1 and parts[0] == 'leave':
+            p_id = int(parts[1])
+            player = manager.leave(p_id)
+        elif parts[0] == 'ante':
+            p_id = int(parts[1])
+            ante = int(parts[2])
+            manager.ack_ante(ante)
+            print('acknowledge player {} ante'.format(p_id))
+
 
 
 def handle_deal():
@@ -165,6 +192,7 @@ def handle_deal():
 
 
 def handle_betting():
+
     pass
 
 
