@@ -62,6 +62,7 @@ def game_play(sock, manager):
     # Repeat steps until all players have left but one
     # pass
     # while manager.get_curr_num_players() > 1: 
+    init_player = 1
     handle_antes(sock, manager)
     handle_deal(manager)
         #find first player and set the sequence 
@@ -72,7 +73,48 @@ def game_play(sock, manager):
             #second betting
             #check get_curr_num_players == 1, get winner: notify :  continue
             #evaluate winner -> notify winner 
+     
+     # Get first player
+    p_id = init_player
+    while True :
+        if p_id in manager.players:
+            break
+        else:
+            p_id += 1
+            if player > manager.num_players:
+                p_id = 1
+    if p_id < init_player :
+        init_player = p_id
+    init_player += 1
 
+    p_info = manager.players[p_id]
+
+    # all_notify = "The first player is player {} {}. ".format(p_id, p_info['name'])
+    # print(all_notify)
+    # manager.notify_all(all_notify)
+    msg = str(p_id)
+    manager.notify_all(msg)
+    time.sleep(0.1)
+
+    p_sequence = [] # The betting sequence 
+    for player_id in manager.players :
+        if player_id >= p_id :
+            p_sequence.append(player_id)
+    for player_id in manager.players :
+        if player_id < p_id :
+            p_sequence.append(player_id)
+    
+    handle_betting(manager, p_sequence)
+    # if manager.get_curr_num_players() < 2:
+    #     handle_evaluate_winner()
+    # else:
+    #     manager.notify_all("continue")
+    
+    # #handle_drop_card() # swap card???
+    # handle_betting(manager, p_sequence)
+    # if manager.get_curr_num_players == 1 :
+    #     handle_evaluate_winner()
+    manager.bets.reset()
 
 def wait_for_start(sock):
     '''
@@ -175,7 +217,7 @@ def handle_antes(sock, manager):
     '''
     # wallet_amt = manager.wallet_amt # need implementation
     ante_amt = manager.ante_amt # need implementation
-    get_response = 0
+    get_response = 0 # could be 1 
     msg = str(ante_amt) + " " + str(get_response)
     manager.notify_all(msg)
     time.sleep(0.1)
@@ -192,7 +234,7 @@ def handle_antes(sock, manager):
         elif parts[0] == 'ante':
             p_id = int(parts[1])
             ante = int(parts[2])
-            manager.ack_ante(ante)
+            manager.ack_ante(p_id)
             print('Acknowledge player {} ante'.format(p_id))
 
 
@@ -218,20 +260,62 @@ def handle_deal(manager):
     print("Card sent complete")
     
 
-def handle_betting():
+def handle_betting(manager, p_sequence):
+    '''
+    may call check call raise
+    '''
+    bet_over = False
+    while not bet_over:
+        for player_id in p_sequence :
+            p_info = manager.players[player_id]
+            conn = p_info['conn']
+            #get bet info for this player
+            pool_amt, max_amt, curr_amt = manager.bet_info(player_id)
+            print(str(player_id) + " " + str(pool_amt) + " " + str(max_amt) + " " + str(curr_amt))
+            message = str(max_amt) + " " + str(curr_amt)
+            # print(message)
+            conn.send(message.encode())
+            
+            response = conn.recv(BUFF_SIZE).decode()
+            print(response)
+            parts = response.strip().split()
 
-    pass
+            if parts[0] == 'Check' :
+                manager.bet_check(player_id)
+                conn.send("OK".encode())
+            elif parts[0] == 'Call' :
+                manager.bet_call(player_id)
+                conn.send("OK".encode())
+            elif parts[0] == 'Raise' :
+                raise_amt = int(parts[2])
+                manager.bet_raise(player_id, raise_amt)
+                conn.send("OK".encode())
+            elif parts[0] == 'Fold' :
+                manager.bet_fold(player_id)
+                p_sequence.remove(player_id)
+                conn.send("OK".encode())
+            elif  parts[0] == 'Leave' :
+                manager.leave(player_id)
+                p_sequence.remove(player_id)
+                conn.send("OK".encode())
+            else:
+                conn.send("Wrong input. Please input again.".encode())
+
+            bet_over, win = manager.is_betting_over()
+            print("Betting over is {}".format(bet_over))
+            if bet_over:
+                break;
 
 
 def handle_check():
     pass
 
 
-def handle_call():
+def handle_call(manager, player_id):
     pass
 
 
-def handle_raise():
+def handle_raise(manager, player_id, amt):
     pass
 
 

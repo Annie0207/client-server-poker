@@ -74,8 +74,15 @@ def game_play(sock, player):
     # Start next hand
 
     # pass
+    # while player.wallet > 0:
     handle_antes(sock, player)
     handle_deal(sock, player)
+    # Get first player id
+    first_player_id = sock.recv(BUFF_SIZE).decode()
+    first_player_id = first_player_id.strip().split()
+    print('The first player is {}'.format(first_player_id[0]))
+
+    handle_betting(sock, player, int(first_player_id[0]))
     
 
 def handle_start_and_join_response(response, player_name):
@@ -158,7 +165,17 @@ def handle_antes(sock, player):
         ante_helper(sock, player, ante_amt)  
 
 def ante_helper(sock, player, ante_amt):
+    '''
+    Helper function for handle_ante(). If player ante successfully, send ante info to server side, 
+    else, send leave info to server side
+
+    sock: the socket
+    player: the player
+    ante_amt: ante amount 
+
+    '''
     ante_result = player.ante(ante_amt)
+    print(ante_result)
     if ante_result:
         msg = 'ante {} {}'.format(
         player.id, ante_amt)
@@ -173,7 +190,8 @@ def ante_helper(sock, player, ante_amt):
 
 def handle_deal(sock, player):
     '''
-    Get the cards from deck and add to the player
+    Get the cards from deck and add to the player. Five card draw is one of the most common types of poker hands. 
+    Each player is dealt five cards, then a round of betting follows. 
 
     sock: the socket
     player: the player
@@ -199,20 +217,118 @@ def handle_deal(sock, player):
     sock.send(msg.encode())
 
 
-def handle_betting():
-    pass
+def handle_betting(sock, player, first_player_id):
+    '''
+    Handle the betting process. The first player will check, and then next player could choose 
+    one of the four call/raise/fold/leave action until the round of betting is over
+
+    sock: the socket
+    player: the player
+    first_player_id: the first player. Only the first player could do check action
+    '''
+    while True:
+        # Get the bet info from server
+        bet_info = sock.recv(BUFF_SIZE).decode()
+        bet_info = bet_info.strip().split()
+        if len(bet_info) == 0:
+            break;       
+        print(bet_info)
+
+        # Get the call amount to deduct from player's wallet
+        max_bet = int(bet_info[0])
+        cur_bet = int(bet_info[1])
+        call_amt = max_bet - cur_bet 
+
+        while True: 
+            # Get player's action from command line       
+            action = player.get_action()
+            print(action)
+            action = action.strip().split()
+
+            # handle the action 
+            if action[0] == 'check' and player.id == first_player_id:
+                handle_check(sock, player, cur_bet)
+            elif action[0] == 'call':
+                handle_call(sock, player, call_amt)
+            elif action[0] == 'raise':
+                raise_amt = int(action[2])
+                handle_raise(sock, player, raise_amt)
+            elif action[0] == 'fold':
+                msg = "Fold {}".format(player.id)
+                sock.send(msg.encode())
+                break
+            elif action[0] == 'leave':
+                player.ack_player_left(player.name)
+                msg = "Leave {}".format(player.id)
+                sock.send(msg.encode())
+                break
+            else:
+                continue
+
+        # Get response from server
+        response = sock.recv(BUFF_SIZE).decode()
+        print(response)
 
 
-def handle_check():
-    pass
+def handle_check(sock, player, cur_bet):
+    '''
+    Handle the check action. Check is basically a call action, which is allowed only for the first player 
+    when the player own nothing to the pot, the check amount is default to the ante amount. 
+
+    sock: the socket
+    player: the first player
+    cur_bet: the ante amount
+    '''
+    checked = player.ack_call(cur_bet)
+    if checked:
+        msg = "Check {} {}".format(player.id, cur_bet)
+        sock.send(msg.encode())
+        break
+    else:
+        print("Checked failed, please choose another action!")
+        continue
 
 
-def handle_call():
-    pass
+def handle_call(sock, player, call_amt):
+    '''
+    Handle the call action. When you call, you bet enough to match what has been bet since the last time 
+    you bet (for instance, if you bet a dime last time, and someone else bet a quarter, you would owe fifteen cents).
+
+    sock: the socket
+    player: the player
+    call_amt: the call amount to deduct from wallet
+    '''
+    called = player.ack_call(call_amt)
+    if called:
+        msg = "Call {} {}".format(player.id, call_amt)
+        sock.send(msg.encode())
+        break
+    else:
+        print("Call failed, please choose another action!")
+        continue
 
 
-def handle_raise():
-    pass
+def handle_raise(sock, player, raise_amt):
+    '''
+    Handle the raise action. When you raise, you first bet enough to match what has been bet since the last time 
+    you bet (as in calling), then you 'raise' the bet another amount (up to you, but there is typically a limit.) 
+    Continuing the above example, if you had bet a dime, the other person raised you fifteen cents (up to a quarter), 
+    you might raise a quarter (up to fifty cents). Since you owed the pot 15 cents for calling and 25 for your raise, 
+    you would put 40 cents into the pot.
+
+    sock: the socket
+    player: the player
+    raise_amt: the raise amount
+    '''
+    raised = player.ack_call(raise_amt)
+    if raised:
+        msg = "Raise {} {}".format(player.id, raise_amt)
+        sock.send(msg.encode())
+        break
+    else:
+        valid_amt = player.wallet - call_amt
+        print("Raise failed, please raise valid amount between 1 to {}".format(valid_amt))
+        continue
 
 
 def handle_betting_info():

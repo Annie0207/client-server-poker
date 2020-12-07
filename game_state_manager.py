@@ -228,7 +228,8 @@ class GameStateManager:
 
         player_id: int - The ID of the player.
         '''
-        pass
+        check_amt = self.bets.get_player_bet(player_id)
+        self.bets.add_bet(player_id, check_amt)
 
     def bet_fold(self, player_id):
         '''
@@ -245,12 +246,27 @@ class GameStateManager:
         amount, or if all players except one have folded. If the latter, the 
         one player left has won the hand. If the former, all players must have 
         had at least one chance to bet for a round to be over.
-
         Returns a boolean tuple indicating if betting is over and if the hand
         has been won: (betting_over, hand_won)
         '''
         # The above description is just a suggestion
-        pass
+        cur_plays_num = len(self.players)
+        if cur_plays_num - len(self.folded_ids) < 1:
+            raise GameFullError(
+                "There is no one in the game.")
+
+        if cur_plays_num - len(self.folded_ids) == 1:
+            return (True, True)
+
+        cur_bets = -1
+        for p_id in self.players:
+            if p_id in self.folded_ids:
+                continue
+            if cur_bets == -1:
+                cur_bets = self.bets.get_player_bet(p_id)
+            elif cur_bets != self.bets.get_player_bet(p_id):
+                return (False, False)
+        return (True, False)
 
     def get_cards(self, num_cards):
         '''
@@ -323,6 +339,8 @@ class BetInfo:
         else:
             self.player_bets[player_id] += amt
 
+        print("Player {} total bet amount {}".format(player_id, self.player_bets[player_id]))
+
     def get_max_bet(self):
         '''
         Finds the players who have bet the most this round so far and returns
@@ -332,15 +350,15 @@ class BetInfo:
         p_ids = []
         max_bet = 0
         d = self.player_bets
-        a = self.amt_key
+        # a = self.amt_key
 
         # Need to find max bet, then add players to list
         for key in d:
-            if d[key][a] > max_bet:
-                max_bet = d[key][a]
+            if d[key] > max_bet:
+                max_bet = d[key]
 
         for key in d:
-            if d[key][a] == max_bet:
+            if d[key] == max_bet:
                 p_ids.append(key)
 
         return (max_bet, p_ids)
@@ -361,11 +379,11 @@ class BetInfo:
         Returns the total amount in the betting pool.
         '''
         d = self.player_bets
-        a = self.amt_key
+        # a = self.amt_key
 
         total = 0
         for key in d:
-            total += d[key][a]
+            total += d[key]
 
         return total
 
