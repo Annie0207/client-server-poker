@@ -316,6 +316,84 @@ class GameStateManager:
             counts = self.get_counts(p_id)
             self.card_val[p_id] = counts
 
+        win_score = [[] for _ in range(10)]
+        for p_id in self.final_hands:
+            win_score[self.score_player(p_id)].append(p_id)
+
+        # all people have royal flush would be the winner
+        if win_score[0]:
+            return win_score[0]
+
+        # people who have straight flush would be the winner. If more than one person, compare the highest rank
+        if win_score[1]:
+            if len(win_score[1]) < 2:
+                return win_score[1]
+            return self.compare_one(win_score[1])
+
+        # people who have four of a kind would be the winner. If more than one person, compare rank
+        if win_score[2]:
+            if len(win_score[2]) < 2:
+                return win_score[2]
+            return self.compare_two(win_score[2])
+
+        # people who have full house would be the winner. If more than one person, compare rank
+        if win_score[3]:
+            if len(win_score[3]) < 2:
+                return win_score[3]
+            return self.compare_two(win_score[3])
+
+        # people who have flush would be the winner. If more than one person, coll high_card
+        if win_score[4]:
+            if len(win_score[4]) < 2:
+                return win_score[4]
+            return self.high_card()
+
+        # people who have straight would be the winner. If more than one person, compare the highest rank
+        if win_score[5]:
+            if len(win_score[5]) < 2:
+                return win_score[5]
+            return self.compare_one(win_score[5])
+
+        # people who have three of a kind would be the winner. If more than one person, compare rank
+        if win_score[6]:
+            if len(win_score[6]) < 2:
+                return win_score[6]
+            return self.compare_three(win_score[6])
+
+        # people who have two pairs would be the winner. If more than one person, compare rank
+        if win_score[7]:
+            if len(win_score[7]) < 2:
+                return win_score[7]
+            return self.compare_three(win_score[7])
+
+        # people who have pair would be the winner. If more than one person, compare rank
+        if win_score[8]:
+            if len(win_score[8]) < 2:
+                return win_score[8]
+            return self.compare_four(win_score[8])
+
+        return self.high_card()
+
+    def score_player(self, player_id):
+        if self.is_royal_flush(player_id):
+            return 0
+        if self.is_straight_flush(player_id):
+            return 1
+        if self.has_four_of_kind(player_id):
+            return 2
+        if self.is_full_house(player_id):
+            return 3
+        if self.is_flush(player_id):
+            return 4
+        if self.is_straight(player_id):
+            return 5
+        if self.has_three_of_kind(player_id):
+            return 6
+        if self.has_two_pairs(player_id):
+            return 7
+        if self.has_one_pair(player_id):
+            return 8
+        return 9
 
     # This method sees if all the cards have the same suit
     def is_flush(self, player_id):
@@ -416,7 +494,7 @@ class GameStateManager:
 
         winner = -1
         cur = tuple()
-        
+
 
 
 
