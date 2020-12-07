@@ -82,7 +82,34 @@ def game_play(sock, player):
     first_player_id = first_player_id.strip().split()
     print('The first player is {}'.format(first_player_id[0]))
 
+    # Handle first round of betting
+    print("Start first round of betting") 
     handle_betting(sock, player, int(first_player_id[0]))
+
+    # Check if has winner, start new game or continue a second round of betting 
+    msg = sock.recv(BUFF_SIZE).decode()
+    if msg == "Winner":
+        winner_info = sock.recv(BUFF_SIZE).decode()
+        print(winner_info)
+        # continue
+    elif msg == "Betting":
+        # Handle swap the cards in hand
+        print("Swap the cards")
+        handle_card_trade()
+
+        # Get first player id
+        first_player_id = sock.recv(BUFF_SIZE).decode()
+        first_player_id = first_player_id.strip().split()
+        print('The first player is {}'.format(first_player_id[0]))
+
+        # Handle second round betting
+        print("Start second round of betting")
+        handle_betting(sock, player, int(first_player_id[0]))
+
+        # Get the winner information
+        winner_info = sock.recv(BUFF_SIZE).decode()
+        print(winner_info)
+
     
 
 def handle_start_and_join_response(response, player_name):
@@ -229,9 +256,10 @@ def handle_betting(sock, player, first_player_id):
     while True:
         # Get the bet info from server
         bet_info = sock.recv(BUFF_SIZE).decode()
-        bet_info = bet_info.strip().split()
-        if len(bet_info) == 0:
-            break;       
+        if bet_info == "Over":
+            break; 
+            
+        bet_info = bet_info.strip().split()   
         print(bet_info)
 
         # Get the call amount to deduct from player's wallet
