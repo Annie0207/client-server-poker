@@ -247,12 +247,21 @@ def handle_betting(sock, player, first_player_id):
 
             # handle the action 
             if action[0] == 'check' and player.id == first_player_id:
-                handle_check(sock, player, cur_bet)
+                if handle_check(sock, player, cur_bet):
+                    break
+                else:
+                    continue
             elif action[0] == 'call':
-                handle_call(sock, player, call_amt)
+                if handle_call(sock, player, call_amt):
+                    break
+                else:
+                    continue
             elif action[0] == 'raise':
                 raise_amt = int(action[2])
-                handle_raise(sock, player, raise_amt)
+                if handle_raise(sock, player, raise_amt):
+                    break
+                else:
+                    continue
             elif action[0] == 'fold':
                 msg = "Fold {}".format(player.id)
                 sock.send(msg.encode())
@@ -283,10 +292,10 @@ def handle_check(sock, player, cur_bet):
     if checked:
         msg = "Check {} {}".format(player.id, cur_bet)
         sock.send(msg.encode())
-        break
-    else:
-        print("Checked failed, please choose another action!")
-        continue
+        return True
+    
+    print("Checked failed, please choose another action!")
+    return False
 
 
 def handle_call(sock, player, call_amt):
@@ -302,10 +311,10 @@ def handle_call(sock, player, call_amt):
     if called:
         msg = "Call {} {}".format(player.id, call_amt)
         sock.send(msg.encode())
-        break
-    else:
-        print("Call failed, please choose another action!")
-        continue
+        return True
+    
+    print("Call failed, please choose another action!")
+    return False
 
 
 def handle_raise(sock, player, raise_amt):
@@ -324,11 +333,11 @@ def handle_raise(sock, player, raise_amt):
     if raised:
         msg = "Raise {} {}".format(player.id, raise_amt)
         sock.send(msg.encode())
-        break
-    else:
-        valid_amt = player.wallet - call_amt
-        print("Raise failed, please raise valid amount between 1 to {}".format(valid_amt))
-        continue
+        return True
+    
+    valid_amt = player.wallet - call_amt
+    print("Raise failed, please raise valid amount between 1 to {}".format(valid_amt))
+    return False
 
 
 def handle_betting_info():
