@@ -56,6 +56,7 @@ class GameStateManager:
         self.turn_id = 1  # ID of the player who's turn it is
         self.folded_ids = set()  # IDs of players who have folded during betting
         self.left_ids = set()
+        self.card_val = {} #record the number of cards for each player
 
     def join(self, connection, address_tup, player_name=''):
         '''
@@ -220,6 +221,7 @@ class GameStateManager:
         '''
         _, max_bet, curr_bet = self.bet_info(player_id)
         call_amt = max_bet - curr_bet
+
         self.bets.add_bet(player_id, call_amt)
 
     def bet_check(self, player_id):
@@ -229,7 +231,8 @@ class GameStateManager:
 
         player_id: int - The ID of the player.
         '''
-        pass
+        cur_bet = self.bets.get_player_bet(player_id)
+        self.bets.add_bet(player_id, cur_bet)
 
     def bet_fold(self, player_id):
         '''
@@ -244,9 +247,9 @@ class GameStateManager:
     def is_betting_over(self):
         '''
         Determines if a round of betting has ended or not. A round of betting is
-        over if all players besides those who have folded have bet the same 
-        amount, or if all players except one have folded. If the latter, the 
-        one player left has won the hand. If the former, all players must have 
+        over if all players besides those who have folded have bet the same
+        amount, or if all players except one have folded. If the latter, the
+        one player left has won the hand. If the former, all players must have
         had at least one chance to bet for a round to be over.
 
         Returns a boolean tuple indicating if betting is over and if the hand
@@ -309,125 +312,122 @@ class GameStateManager:
         '''
         # NOTE: Needs to empty the evaluated hands after, add back to deck,
         # and shuffle for next round.
+        for p_id in self.final_hands:
+            counts = self.get_counts(p_id)
+            self.card_val[p_id] = counts
 
-    #T This method sees if all the cards have the same suit
+
+    # This method sees if all the cards have the same suit
     def is_flush(self, player_id):
         x = self.final_hands[player_id][0].suit
-        y = 0
         for i in range(1, cards.NUM_CARDS_IN_HAND):
-            if self.final_hands[player_id][i].suit == x:
-                y += 1
-        if y == cards.NUM_CARDS_IN_HAND - 1:
-            return True
-        return False
+            if self.final_hands[player_id][i].suit != x:
+                return False
+        return True
 
     # This method sees if the values are in sequence
     def is_straight(self, player_id):
-        x = self.final_hands[player_id][0].rank
-        y = 0
-        for i in range(1, cards.NUM_CARDS_IN_HAND):
-            if self.final_hands[player_id][i].rank == (i + x):
-                y += 1
-        if y == cards.NUM_CARDS_IN_HAND - 1:
-            return True
+        for i, c in enumerate(self.card_val[player_id]):
+            if c == 1:
+                for j in range(i + 1, i + cards.NUM_CARDS_IN_HAND):
+                    if j > 14 or self.card_val[player_id][j] == 0 :
+                        return False
+                return True
         return False
 
     # This method sees if the cards are same suit and in sequence
     def is_straight_flush(self, player_id):
         x = self.is_flush(player_id)
         y = self.is_straight(player_id)
-        if x == True and y == True:
+        if x and y:
             return True
         return False
 
-    #This method sees if the cards in the hand have the same suit and the values 10, 11, 12, 13, 14
+    # This method sees if the cards in the hand have the same suit and the values 10, 11, 12, 13, 14
     def is_royal_flush(self, player_id):
         x = self.is_flush(player_id)
+        counts = self.card_val[player_id]
         if x:
-            if self.final_hands[player_id][0].rank == 10 and self.final_hands[player_id][1].rank == 11\
-                and self.final_hands[player_id][2].rank == 12 and self.final_hands[player_id][3].rank == 13\
-                and self.final_hands[player_id][4].rank == 14:
+            if counts[14] == 1 and counts[13] == 1 and counts[12] == 1 and counts[11] == 1 and counts[10] == 1:
                 return True
         return False
 
-    # This method sees if the hand has five cards with the same value
-    def has_five_of_kind(self, player_id):
-        x = self.final_hands[player_id][0].rank
-        for j in range(1, cards.NUM_CARDS_IN_HAND):
-            if self.final_hands[player_id][j].rank != x:
-                return False
-        return True
-
     # This method sees if the hand has four cards with the same value
     def has_four_of_kind(self, player_id):
-        for i in range(cards.NUM_CARDS_IN_HAND):
-            x = self.final_hands[player_id][i].rank
-            y = 0
-            for j in range(cards.NUM_CARDS_IN_HAND):
-                if self.final_hands[player_id][j].rank:
-                    y += 1
-            if y == 4:
+        for _, c in enumerate(self.card_val[player_id]):
+            if c == 4:
                 return True
         return False
 
     # This method sees if the hand has three cards with the same value
     def has_three_of_kind(self, player_id):
-        for i in range(cards.NUM_CARDS_IN_HAND):
-            x = self.final_hands[player_id][i].rank
-            y = 0
-            for j in range(cards.NUM_CARDS_IN_HAND):
-                if self.final_hands[player_id][j].rank:
-                    y += 1
-            if y == 3:
+        for _, c in enumerate(self.card_val[player_id]):
+            if c == 3:
                 return True
         return False
 
     # This method sees if the hand has exactly two pairs
     def has_two_pairs(self, player_id):
-        counts = self.get_counts(player_id)
         x = 0
-        for i in range(len(counts)):
-            if counts[i] == 2:
+        for _, c in enumerate(self.card_val[player_id]):
+            if c == 2:
                 x += 1
-            if counts[i] > 2:
-                x += counts[i] // 2
+            if c > 2:
+                x += c // 2
         if x == 2:
             return True
         return False
 
     # This method sees if the hand has exactly one pairs
-    def has_one_pairs(self, player_id):
-        counts = self.get_counts(player_id)
+    def has_one_pair(self, player_id):
         x = 0
-        for i in range(len(counts)):
-            if counts[i] == 2:
+        for i, c in enumerate(self.card_val[player_id]):
+            if c == 2:
                 x += 1
-            if counts[i] > 2:
-                x += counts[i] // 2
+            if c > 2:
+                x += c // 2
         if x == 1:
             return True
         return False
 
     # This method sees if the hand contains three cards with the same value and two other cards with the same value
     def is_full_house(self, player_id):
-        counts = self.get_counts(player_id)
         x = 0
         y = 0
-        for i in range(len(counts)):
-            if counts[i] == 2:
+        for _, c in enumerate(self.card_val[player_id]):
+            if c == 2:
                 x += 1
-        for i in range(len(counts)):
-            if counts[i] == 3:
+            if c == 3:
                 y += 1
         if x == 1 and y == 1:
             return True
         return False
 
-    # count the amount of ranks in hand
+    # This method to compare the rank of the card
+    def high_card(self):
+        high_card = []
+        for p_id, counts in self.card_val.items():
+            for i, j in enumerate(counts):
+                if j:
+                    high_card[p_id].append((i,j))
+
+        for p_id in self.card_val:
+            high_card[p_id].sort(key=lambda x: (-x[0], -x[1]))
+
+        winner = -1
+        cur = tuple()
+        
+
+
+
+
+
+
+    # count the amount of values in hand, range from 2 to 14
     def get_counts(self, player_id):
         counts = [0] * 15
         for i in range(cards.NUM_CARDS_IN_HAND):
-            counts[self.final_hands[player_id][i].rank] += 1
+            counts[self.final_hands[player_id][i].value] += 1
         return counts
 
     def ack_ante(self, player_id):
