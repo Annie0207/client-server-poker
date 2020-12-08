@@ -294,12 +294,12 @@ class GameStateManager:
     def remove_hand(self, player_id):
         if self.final_hands:
             del self.final_hands[player_id]
-
+    '''
     def evaluate_hands(self):
         '''
-        Evaluates player hands at the end of a round of betting and determines
-        the winner.
-        '''
+        #Evaluates player hands at the end of a round of betting and determines
+        #the winner.
+    '''
         # NOTE: Needs to empty the evaluated hands after, add back to deck,
         # and shuffle for next round.
         for p_id in self.final_hands:
@@ -363,6 +363,75 @@ class GameStateManager:
             return self.compare_four(win_score[8])
 
         return self.high_card()
+    '''
+    def evaluate_hands(self):
+        '''
+        Evaluates player hands at the end of a round of betting and determines
+        the winner.
+        '''
+        # NOTE: Needs to empty the evaluated hands after, add back to deck,
+        # and shuffle for next round.
+        for p_id in self.final_hands:
+            counts = self.get_counts(p_id)
+            self.card_val[p_id] = counts
+
+        win_score = [[] for _ in range(10)]
+        for p_id in self.final_hands:
+            win_score[self.score_player(p_id)].append(p_id)
+
+        # all people have royal flush would be the winner
+        if win_score[0]:
+            return win_score[0]
+
+        # people who have straight flush would be the winner. If more than one person, compare the highest rank
+        if win_score[1]:
+            if len(win_score[1]) < 2:
+                return win_score[1]
+            return self.rank_high(win_score[1])
+
+        # people who have four of a kind would be the winner. If more than one person, compare the highest rank
+        if win_score[2]:
+            if len(win_score[2]) < 2:
+                return win_score[2]
+            return self.rank_high(win_score[2])
+
+        # people who have full house would be the winner. If more than one person, compare the highest rank
+        if win_score[3]:
+            if len(win_score[3]) < 2:
+                return win_score[3]
+            return self.rank_high(win_score[3])
+
+        # people who have flush would be the winner. If more than one person, compare the highest rank
+        if win_score[4]:
+            if len(win_score[4]) < 2:
+                return win_score[4]
+            return self.rank_high(win_score[4])
+
+        # people who have straight would be the winner. If more than one person, compare the highest rank
+        if win_score[5]:
+            if len(win_score[5]) < 2:
+                return win_score[5]
+            return self.rank_high(win_score[5])
+
+        # people who have three of a kind would be the winner. If more than one person, compare the highest rank
+        if win_score[6]:
+            if len(win_score[6]) < 2:
+                return win_score[6]
+            return self.rank_high(win_score[6])
+
+        # people who have two pairs would be the winner. If more than one person, compare the highest rank
+        if win_score[7]:
+            if len(win_score[7]) < 2:
+                return win_score[7]
+            return self.rank_high(win_score[7])
+
+        # people who have pair would be the winner. If more than one person, compare the highest rank
+        if win_score[8]:
+            if len(win_score[8]) < 2:
+                return win_score[8]
+            return self.rank_high(win_score[8])
+
+        return self.high_card()
 
     def score_player(self, player_id):
         if self.is_royal_flush(player_id):
@@ -387,9 +456,9 @@ class GameStateManager:
 
     # This method sees if all the cards have the same suit
     def is_flush(self, player_id):
-        x = self.final_hands[player_id][0].suit
+        x = self.final_hands[player_id].hand[0].suit
         for i in range(1, cards.NUM_CARDS_IN_HAND):
-            if self.final_hands[player_id][i].suit != x:
+            if self.final_hands[player_id].hand[i].suit != x:
                 return False
         return True
 
@@ -471,6 +540,7 @@ class GameStateManager:
             return True
         return False
 
+    '''
     # This method to compare the rank of the card
     def high_card(self):
         high_card = []
@@ -484,14 +554,40 @@ class GameStateManager:
 
         winner = -1
         cur = tuple()
+    '''
+    def high_card(self):
+        return self.rank_high(list(self.final_hands.keys()))
 
 
     # count the amount of values in hand, range from 2 to 14
     def get_counts(self, player_id):
         counts = [0] * 15
         for i in range(cards.NUM_CARDS_IN_HAND):
-            counts[self.final_hands[player_id][i].value] += 1
+            counts[self.final_hands[player_id].hand[i].value] += 1
         return counts
+        
+     # find the winner who has the NO.1 highest rank
+    def rank_high(self, candidates):
+        if len(candidates) < 1:
+            raise ValueError(
+                'no one to check')
+
+        if len(candidates) == 1:
+            return candidates
+
+        winner = []
+        cur_rank = -1
+        for i in candidates:
+            for j in range(14, -1, -1):
+                if self.card_val[i][j]:
+                    top = j
+                    if top > cur_rank:
+                        cur_rank = top
+                        winner = [i]
+                    elif top == cur_rank:
+                        winner.append(i)
+                    break
+        return winner
 
     def ack_ante(self, player_id):
         '''
