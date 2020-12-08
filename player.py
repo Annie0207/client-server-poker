@@ -202,7 +202,7 @@ class Player:
 
         amt: int - the amount needed to ante
         '''
-        self._debit_wallet(amt)
+        return self._debit_wallet(amt)
 
     def ack_call(self, amt):
         '''
@@ -215,7 +215,7 @@ class Player:
 
         amt: int - the amount the player needs to bet
         '''
-        self._debit_wallet(amt)
+        return self._debit_wallet(amt)
 
     def _debit_wallet(self, amt):
         '''
