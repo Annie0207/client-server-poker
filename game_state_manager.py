@@ -502,6 +502,15 @@ class GameStateManager:
         self.bets.add_bet(player_id, self.ante_amt)
 
 
+    def reset(self):
+        '''
+        Reset the manager deck, final_hands, bets, fold_ids
+        '''
+        self.deck = cards.Deck()
+        self.final_hands = dict()
+        self.bets.reset()
+        self.fold_ids = set()
+
 class BetInfo:
     '''
     Keeps track of important data during a round of betting.

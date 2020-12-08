@@ -325,3 +325,9 @@ class Player:
         print('Highest bet (call amount): ', '$', max_bet, sep='')
         print('Your current bet: ', '$', current_bet, sep='')
         print('Your wallet: ', '$', self.wallet, sep='')
+
+    def reset(self):
+        '''
+        Reset the player hand
+        '''
+        self.hand = cards.Hand(cards.NUM_CARDS_IN_HAND)

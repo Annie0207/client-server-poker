@@ -75,44 +75,62 @@ def game_play(sock, player):
     # Start next hand
 
     # pass
-    # while player.wallet > 0:
-    handle_antes(sock, player)
-    handle_deal(sock, player)
-    # Get first player id
-    first_player_id = sock.recv(BUFF_SIZE).decode()
-    first_player_id = first_player_id.strip().split()
-    print('The first player is {}'.format(first_player_id[0]))
+    is_leave = False
+    while not is_leave:  
+        ante_true = handle_antes(sock, player)
 
-    # Handle first round of betting
-    print("Start first round of betting") 
-    is_leave = handle_betting(sock, player, int(first_player_id[0]))
+        if not ante_true: 
+            return
 
-    # Check if the player leave the game or not
-    if not is_leave:
+        handle_deal(sock, player)
+        # Get first player id
+        first_player_id = sock.recv(BUFF_SIZE).decode()
+        first_player_id = first_player_id.strip().split()
+        print('The first player is {}'.format(first_player_id[0]))
 
-        # Check if has winner, start new game or continue a second round of betting 
-        msg = sock.recv(BUFF_SIZE).decode()
-        if msg == "Winner":
-            winner_info = sock.recv(BUFF_SIZE).decode()
-            print(winner_info)
-            # continue
-        elif msg == "Betting":
-            # Handle swap the cards in hand
-            print("Swap the cards")
-            handle_card_trade(sock, player)
+        # Handle first round of betting
+        print("Start first round of betting") 
+        is_leave = handle_betting(sock, player, int(first_player_id[0]))
 
-            # Get first player id
-            first_player_id = sock.recv(BUFF_SIZE).decode()
-            first_player_id = first_player_id.strip().split()
-            print('The first player is {}'.format(first_player_id[0]))
+        # Check if the player leave the game or not
+        if not is_leave:
 
-            # Handle second round betting
-            print("Start second round of betting")
-            handle_betting(sock, player, int(first_player_id[0]))
+            # Check if has winner, start new game or continue a second round of betting 
+            msg = sock.recv(BUFF_SIZE).decode()
+            if msg == "Winner":
+                winner_info = sock.recv(BUFF_SIZE).decode()
+                print(winner_info)
+            elif msg == "Betting":
+                # Handle swap the cards in hand
+                print("Swap the cards")
+                handle_card_trade(sock, player)
 
-            # Get the winner information
-            winner_info = sock.recv(BUFF_SIZE).decode()
-            print(winner_info)
+                # Get first player id
+                first_player_id = sock.recv(BUFF_SIZE).decode()
+                first_player_id = first_player_id.strip().split()
+                print('The first player is {}'.format(first_player_id[0]))
+
+                # Handle second round betting
+                print("Start second round of betting")
+                is_leave = handle_betting(sock, player, int(first_player_id[0]))
+
+                if is_leave:
+                    return
+
+                # Get the winner information
+                winner_info = sock.recv(BUFF_SIZE).decode()
+                print(winner_info)
+
+            # Add the bets to wallet if the player win the game
+            msg = sock.recv(BUFF_SIZE).decode()
+            print(msg)
+            msg = msg.strip().split()
+
+            if msg[0] == 'Win':
+                player.win_pool(int(msg[1]))
+
+            # Reset player
+            player.reset()
 
     
 
@@ -170,7 +188,8 @@ def handle_antes(sock, player):
 
     sock: the socket
     player: the player
-
+    
+    return a bool ante result 
     '''
     # get the response from server and parse ante_amt and get_response 
     response = sock.recv(BUFF_SIZE).decode()
@@ -186,14 +205,14 @@ def handle_antes(sock, player):
                 msg = 'leave {}'.format(player.id)
                 sock.send(msg.encode())
                 print('player {} leave game'.format(player.id))
-                break
+                sock.close()
+                return False
             elif resp == 'ante':
-                ante_helper(sock, player, ante_amt)        
-                break
+                return ante_helper(sock, player, ante_amt)              
             else:
                 continue
     else: # default get_response = 0, every player ante the game 
-        ante_helper(sock, player, ante_amt)  
+        return ante_helper(sock, player, ante_amt)  
 
 def ante_helper(sock, player, ante_amt):
     '''
@@ -210,14 +229,15 @@ def ante_helper(sock, player, ante_amt):
     if ante_result:
         msg = 'ante {} {}'.format(
         player.id, ante_amt)
-
         sock.send(msg.encode())
         print('player {} ante {}'.format(player.id, ante_amt))
     else:
         msg = 'leave {}'.format(player.id)
         sock.send(msg.encode())
-        print('player {} ante failed and leave game'.format(player.id)) 
+        print('player {} ante failed and leave game'.format(player.id))
+        sock.close()
 
+    return ante_result
 
 def handle_deal(sock, player):
     '''
@@ -285,19 +305,13 @@ def handle_betting(sock, player, first_player_id):
             if action[0] == 'check' and player.id == first_player_id:
                 if handle_check(sock, player, cur_bet):
                     break
-                else:
-                    continue
             elif action[0] == 'call':
                 if handle_call(sock, player, call_amt):
                     break
-                else:
-                    continue
             elif action[0] == 'raise':
                 raise_amt = int(action[2])
                 if handle_raise(sock, player, raise_amt):
                     break
-                else:
-                    continue
             elif action[0] == 'fold':
                 msg = "Fold {}".format(player.id)
                 sock.send(msg.encode())
@@ -311,10 +325,6 @@ def handle_betting(sock, player, first_player_id):
                 break
             else:
                 continue
-
-        # # Get response from server
-        # response = sock.recv(BUFF_SIZE).decode()
-        # print(response)
     return is_leave
 
 def handle_check(sock, player, cur_bet):
