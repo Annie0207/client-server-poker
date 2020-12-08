@@ -277,6 +277,9 @@ def handle_betting(sock, player, first_player_id):
             action = player.get_action()
             print(action)
             action = action.strip().split()
+            if action[0] != 'check' and player.id == first_player_id:
+                print("First player must check.")
+                continue
 
             # handle the action 
             if action[0] == 'check' and player.id == first_player_id:
@@ -382,16 +385,31 @@ def handle_betting_info():
 def handle_card_trade(sock, player):
     resp = sock.recv(BUFF_SIZE).decode()
     if resp.startswith(DISCARD):
+        print("Your current card is \n")
+        player.hand.print_hand()
         start = len(DISCARD) + 1  # +1 to get past space in message
+        discard = input("Are you going to swap cards? Y/N: \n")
+        while discard != 'Y' :
+            if discard == 'N':
+                sock.send("N".encode())
+                return
+            discard = input("Are you going to swap cards? Y/N: \n")
         print(resp[start:])
-        print("Please choose which card to discard. You can discard at most 3 cards. \n" + 
-               "Example: If you want to discard H2 and C3, type in 'H2 C3'")
+        print("Please choose which card index to discard. The card index is 1-indexed. You can discard at most 3 cards. \n" + 
+               "Example: If you want to discard card 1 and 3, type in '1 3'")
         discard_cards = input()
-        if discard_cards == '':
+        if len(discard_cards) == '':
             return
         discard_list = discard_cards.split()
+        card_list = []
         for card in discard_list:
-            
+            card_list.append(int(card))
+        player.delete_cards(card_list)
+        msg = "{}".format(len(card_list))
+        sock.send(msg.encode())
+        handle_deal(sock, player)
+
+
 
         
 

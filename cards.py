@@ -170,8 +170,9 @@ class Hand:
 
         card_id: int - the 1-indexed position of the card to remove
         '''
+        print(card_id)
         if not 0 < card_id <= len(self.hand):
-            raise ValueError('card_id must be a valid index (1 to len)')
+            raise ValueError('card_id must be a valid index (1 to 5)')
 
         card = self.hand[card_id - 1]
         self.hand.remove(card)

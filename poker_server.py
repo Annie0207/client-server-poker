@@ -132,7 +132,7 @@ def game_play(sock, manager):
         time.sleep(0.1)
 
         print("Swap cards in hand")
-        handle_card_trade()
+        handle_card_trade(manager, p_sequence)
 
         # Send the first player for 2nd round of betting 
         manager.notify_all(str(p_sequence[0]))
@@ -297,7 +297,7 @@ def handle_deal(manager):
             msg += card.__repr__() + " "
             print(card.__str__())
         conn.send(msg.encode())
-        response = conn.recv(512).decode()
+        response = conn.recv(BUFF_SIZE).decode()
         if response == 'Received' :
             manager.store_hand(p_id, cards)
             print("cards received to {}".format(value['name']))
@@ -345,7 +345,6 @@ def handle_betting(manager, p_sequence):
 
         for p_id in p_remove:
             p_sequence.remove(p_id)
-            print("remove {} in p_sequence".format(p_id))
 
     return p_sequence
 
@@ -386,12 +385,25 @@ def handle_card_trade(manager, p_sequence):
     3. Manager gives new card to player
     '''
     for p_id in p_sequence:
-        conn = manager.players[player_id]['conn']
+        conn = manager.players[p_id]['conn']
         message = DISCARD + " Please discard cards"
-        conn.send(message.decode())
-
-        
-
+        conn.send(message.encode())
+        resp = conn.recv(BUFF_SIZE).decode()
+        if resp == "N":
+            continue
+        num_change = int(resp)
+        cards = manager.get_cards(num_change)
+        print(cards)
+        msg = ""
+        for card in cards:
+            msg += card.__repr__() + " "
+        print(msg)
+        conn.send(msg.encode())
+        response = conn.recv(BUFF_SIZE).decode()
+        if response == 'Received' :
+            manager.store_hand(p_id, cards)
+            print("cards received to {}".format(manager.players[p_id]['name']))
+    print("Card sent complete")
 
 def handle_evaluate_winner(manager):
     winner = manager.evaluate_hands() #  Return a list of player_id who wins
