@@ -64,11 +64,14 @@ def game_play(sock, manager):
     # pass
     init_player = 1
     while manager.get_curr_num_players() > 1: 
+        print("New game start")
         handle_antes(sock, manager)
         handle_deal(manager)
          
          # Get first player
-        p_id = init_player
+        init_player = manager.turn_id
+        manager.increment_turn()
+        '''
         while True :
             if p_id in manager.players:
                 break
@@ -79,19 +82,18 @@ def game_play(sock, manager):
         if p_id < init_player:
             init_player = p_id
         init_player += 1
+        '''
 
-        p_info = manager.players[p_id]
-
-        msg = str(p_id)
+        msg = str(init_player)
         manager.notify_all(msg)
         time.sleep(0.1)
 
         p_sequence = [] # The betting sequence 
         for player_id in manager.players :
-            if player_id >= p_id :
+            if player_id >= init_player :
                 p_sequence.append(player_id)
         for player_id in manager.players :
-            if player_id < p_id :
+            if player_id < init_player :
                 p_sequence.append(player_id)
 
         print(p_sequence)
@@ -310,7 +312,7 @@ def handle_antes(sock, manager):
     
     count = manager.num_players
     # for id in range(1, count + 1):
-    for p_id in manager.players:
+    for p_id in list(manager.players.keys()):
         p_info = manager.players[p_id]
         conn = p_info['conn']
         msg = conn.recv(BUFF_SIZE).decode()
@@ -331,6 +333,7 @@ def handle_deal(manager):
     Each player will get 5 cards. Since all cards are shuffled, the card will be distributed by current sequence
     Note: no fold is considered as no player can call fold at this time
     '''
+    print("Start deal")
     for p_id, value in manager.players.items() :
         print(p_id)
         cards = manager.get_cards(CARD_AMOUNT)
@@ -354,6 +357,7 @@ def handle_betting(manager, p_sequence):
     may call check call raise
     '''
     bet_over = False
+    first_player = True
     while not bet_over:
         p_remove = []
         for player_id in p_sequence :
@@ -362,9 +366,10 @@ def handle_betting(manager, p_sequence):
             #get bet info for this player
             pool_amt, max_amt, curr_amt = manager.bet_info(player_id)
             print(str(player_id) + " " + str(pool_amt) + " " + str(max_amt) + " " + str(curr_amt))
-            message = str(max_amt) + " " + str(curr_amt)
+            message = str(max_amt) + " " + str(curr_amt) + " " + str(first_player)
             # print(message)
             conn.send(message.encode())
+            first_player = False
             
             response = conn.recv(BUFF_SIZE).decode()
             print(response)
@@ -376,7 +381,7 @@ def handle_betting(manager, p_sequence):
                 handle_call(manager, player_id)
             elif parts[0] == 'Raise' :
                 raise_amt = int(parts[2])
-                handle_Raise(manager, player_id, raise_amt)
+                handle_raise(manager, player_id, raise_amt)
             elif parts[0] == 'Fold' : # should remove the hands from the final hand
                 handle_fold(manager, player_id, p_remove)
             elif  parts[0] == 'Leave' :

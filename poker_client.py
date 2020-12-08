@@ -77,6 +77,7 @@ def game_play(sock, player):
     # pass
     is_leave = False
     while not is_leave:  
+        print("New game start")
         ante_true = handle_antes(sock, player)
 
         if not ante_true: 
@@ -323,18 +324,19 @@ def handle_betting(sock, player, first_player_id):
         max_bet = int(bet_info[0])
         cur_bet = int(bet_info[1])
         call_amt = max_bet - cur_bet 
+        first_player = True if bet_info[2] == "True" else False
 
         while True: 
             # Get player's action from command line       
             action = player.get_action()
             print(action)
             action = action.strip().split()
-            if action[0] != 'check' and player.id == first_player_id:
+            if action[0] != 'check' and first_player:
                 print("First player must check.")
                 continue
 
             # handle the action 
-            if action[0] == 'check' and player.id == first_player_id:
+            if action[0] == 'check' and first_player:
                 if handle_check(sock, player, cur_bet):
                     break
             elif action[0] == 'call':
