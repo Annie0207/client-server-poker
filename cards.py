@@ -16,6 +16,7 @@ RANKS = set(['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'])
 
 # At this point, only 5 Card Draw is available
 NUM_CARDS_IN_HAND = 5
+MAX_DISCARD = 3
 
 
 class Deck:

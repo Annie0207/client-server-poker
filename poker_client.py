@@ -14,6 +14,7 @@ START = 'start'
 JOIN = 'join'
 BEGIN = 'begin'
 NOTIFY = 'notify'
+DISCARD = 'discard'
 
 # Message buffer size (somewhat arbitrary, should be fine for all messages)
 BUFF_SIZE = 512
@@ -98,7 +99,7 @@ def game_play(sock, player):
         elif msg == "Betting":
             # Handle swap the cards in hand
             print("Swap the cards")
-            handle_card_trade()
+            handle_card_trade(sock, player)
 
             # Get first player id
             first_player_id = sock.recv(BUFF_SIZE).decode()
@@ -378,8 +379,21 @@ def handle_betting_info():
     pass
 
 
-def handle_card_trade():
-    pass
+def handle_card_trade(sock, player):
+    resp = sock.recv(BUFF_SIZE).decode()
+    if resp.startswith(DISCARD):
+        start = len(DISCARD) + 1  # +1 to get past space in message
+        print(resp[start:])
+        print("Please choose which card to discard. You can discard at most 3 cards. \n" + 
+               "Example: If you want to discard H2 and C3, type in 'H2 C3'")
+        discard_cards = input()
+        if discard_cards == '':
+            return
+        discard_list = discard_cards.split()
+        for card in discard_list:
+            
+
+        
 
 
 def get_cmd_args(argv):

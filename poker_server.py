@@ -14,6 +14,7 @@ BUFF_SIZE = 512
 BEGIN = 'begin'
 NOTIFY = 'notify'
 CARD_AMOUNT = 5
+DISCARD = 'discard'
 
 def main(argv):
     # Parse command line arguments
@@ -151,13 +152,14 @@ def game_play(sock, manager):
                 if p_id not in manager.folded_ids:
                     winner = p_id
         else:
-            winner = handle_evaluate_winner()
+            winner = handle_evaluate_winner(manager)
 
         # Notify all the winner information
         manager.notify_all("Player {} has won the game!".format(winner))
         time.sleep(0.1)
 
     manager.bets.reset()
+
 
 def wait_for_start(sock):
     '''
@@ -325,27 +327,16 @@ def handle_betting(manager, p_sequence):
             parts = response.strip().split()
            
             if parts[0] == 'Check' :
-                manager.bet_check(player_id)
-                # conn.send("OK".encode())
+                handle_check(manager, player_id)
             elif parts[0] == 'Call' :
-                manager.bet_call(player_id)
-                # conn.send("OK".encode())
+                handle_call(manager, player_id)
             elif parts[0] == 'Raise' :
                 raise_amt = int(parts[2])
-                manager.bet_raise(player_id, raise_amt)
-                # conn.send("OK".encode())
+                handle_Raise(manager, player_id, raise_amt)
             elif parts[0] == 'Fold' : # should remove the hands from the final hand
-                p_remove.append(player_id)
-                manager.bet_fold(player_id)
-                # p_sequence.remove(player_id)
-                # conn.send("OK".encode())
+                handle_fold(manager, player_id, p_remove)
             elif  parts[0] == 'Leave' :
-                p_remove.append(player_id)
-                manager.leave(player_id)
-                # p_sequence.remove(player_id)
-                # conn.send("OK".encode())
-            else:
-                conn.send("Wrong input. Please input again.".encode())
+                handle_leave(manager, p_remove, player_id)
 
             bet_over, win = manager.is_betting_over()
             print("Betting over is {}".format(bet_over))
@@ -359,28 +350,53 @@ def handle_betting(manager, p_sequence):
     return p_sequence
 
 
-def handle_check():
-    pass
+def handle_check(manager, player_id):
+    manager.bet_check(player_id)
+    # conn.send("OK".encode())
 
 
 def handle_call(manager, player_id):
-    pass
+    manager.bet_call(player_id)
+    # conn.send("OK".encode())
 
 
-def handle_raise(manager, player_id, amt):
-    pass
+def handle_raise(manager, player_id, raise_amt):
+    manager.bet_raise(player_id, raise_amt)
+    # conn.send("OK".encode())
 
+def handle_fold(manager, player_id, p_remove):
+    p_remove.append(player_id)
+    manager.bet_fold(player_id)
+    # conn.send("OK".encode())
+
+def handle_leave(manager, p_remove, player_id):
+    p_remove.append(player_id)
+    manager.leave(player_id)
+    # conn.send("OK".encode())
 
 def handle_betting_info():
     pass
 
 
-def handle_card_trade():
-    pass
+def handle_card_trade(manager, p_sequence):
+    '''
+    The players will take turns to discard cards and draw new cards.
+    1. Send the player request to discard cards.
+    2. Player send discard card successful info
+    3. Manager gives new card to player
+    '''
+    for p_id in p_sequence:
+        conn = manager.players[player_id]['conn']
+        message = DISCARD + " Please discard cards"
+        conn.send(message.decode())
+
+        
 
 
-def handle_evaluate_winner():
-    pass
+def handle_evaluate_winner(manager):
+    winner = manager.evaluate_hands() #  Return a list of player_id who wins
+    return winner
+   
 
 
 def get_cmd_args(argv):

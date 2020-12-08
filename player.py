@@ -254,6 +254,14 @@ class Player:
         for card in card_list:
             self.hand.add_card(card)
 
+    def delete_cards(self, card_List):
+        '''
+        Delete each of the cards in the list to this players hand. There must be 
+        at lease one card and no more than MAX_DISCARD cards. Otherwise, we will 
+        throw a HandFullError
+        '''
+        l = len(card_list)
+
     def win_pool(self, amt):
         '''
         Adds betting pool winnings to this players wallet. Should only be called when
