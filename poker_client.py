@@ -84,31 +84,34 @@ def game_play(sock, player):
 
     # Handle first round of betting
     print("Start first round of betting") 
-    handle_betting(sock, player, int(first_player_id[0]))
+    is_leave = handle_betting(sock, player, int(first_player_id[0]))
 
-    # Check if has winner, start new game or continue a second round of betting 
-    msg = sock.recv(BUFF_SIZE).decode()
-    if msg == "Winner":
-        winner_info = sock.recv(BUFF_SIZE).decode()
-        print(winner_info)
-        # continue
-    elif msg == "Betting":
-        # Handle swap the cards in hand
-        print("Swap the cards")
-        handle_card_trade()
+    # Check if the player leave the game or not
+    if not is_leave:
 
-        # Get first player id
-        first_player_id = sock.recv(BUFF_SIZE).decode()
-        first_player_id = first_player_id.strip().split()
-        print('The first player is {}'.format(first_player_id[0]))
+        # Check if has winner, start new game or continue a second round of betting 
+        msg = sock.recv(BUFF_SIZE).decode()
+        if msg == "Winner":
+            winner_info = sock.recv(BUFF_SIZE).decode()
+            print(winner_info)
+            # continue
+        elif msg == "Betting":
+            # Handle swap the cards in hand
+            print("Swap the cards")
+            handle_card_trade()
 
-        # Handle second round betting
-        print("Start second round of betting")
-        handle_betting(sock, player, int(first_player_id[0]))
+            # Get first player id
+            first_player_id = sock.recv(BUFF_SIZE).decode()
+            first_player_id = first_player_id.strip().split()
+            print('The first player is {}'.format(first_player_id[0]))
 
-        # Get the winner information
-        winner_info = sock.recv(BUFF_SIZE).decode()
-        print(winner_info)
+            # Handle second round betting
+            print("Start second round of betting")
+            handle_betting(sock, player, int(first_player_id[0]))
+
+            # Get the winner information
+            winner_info = sock.recv(BUFF_SIZE).decode()
+            print(winner_info)
 
     
 
@@ -253,12 +256,13 @@ def handle_betting(sock, player, first_player_id):
     player: the player
     first_player_id: the first player. Only the first player could do check action
     '''
-    while True:
+    is_leave = False
+    while not is_leave:
         # Get the bet info from server
         bet_info = sock.recv(BUFF_SIZE).decode()
         if bet_info == "Over":
             break; 
-            
+
         bet_info = bet_info.strip().split()   
         print(bet_info)
 
@@ -298,14 +302,16 @@ def handle_betting(sock, player, first_player_id):
                 player.ack_player_left(player.name)
                 msg = "Leave {}".format(player.id)
                 sock.send(msg.encode())
+                sock.close()
+                is_leave = True
                 break
             else:
                 continue
 
-        # Get response from server
-        response = sock.recv(BUFF_SIZE).decode()
-        print(response)
-
+        # # Get response from server
+        # response = sock.recv(BUFF_SIZE).decode()
+        # print(response)
+    return is_leave
 
 def handle_check(sock, player, cur_bet):
     '''

@@ -189,6 +189,7 @@ class GameStateManager:
 
         player_id: int - The ID of the player.
         '''
+        self.left_ids.add(player_id)
         player = self.players[player_id]
         del self.players[player_id]
         return player  # ID is already known, as it was passed in
@@ -237,7 +238,8 @@ class GameStateManager:
 
         player_id: int - The ID of the player.
         '''
-        pass
+        self.folded_ids.add(player_id)
+        # self.notify_all(str(player_id) + "folded the game")
 
     def is_betting_over(self):
         '''
@@ -298,6 +300,7 @@ class GameStateManager:
 
         self.final_hands[player_id] = hand
 
+
     def evaluate_hands(self):
         '''
         Evaluates player hands at the end of a round of betting and determines
@@ -305,7 +308,196 @@ class GameStateManager:
         '''
         # NOTE: Needs to empty the evaluated hands after, add back to deck,
         # and shuffle for next round.
-        pass
+        for p_id in self.final_hands:
+            counts = self.get_counts(p_id)
+            self.card_val[p_id] = counts
+
+        win_score = [[] for _ in range(10)]
+        for p_id in self.final_hands:
+            win_score[self.score_player(p_id)].append(p_id)
+
+        # all people have royal flush would be the winner
+        if win_score[0]:
+            return win_score[0]
+
+        # people who have straight flush would be the winner. If more than one person, compare the highest rank
+        if win_score[1]:
+            if len(win_score[1]) < 2:
+                return win_score[1]
+            return self.compare_one(win_score[1])
+
+        # people who have four of a kind would be the winner. If more than one person, compare rank
+        if win_score[2]:
+            if len(win_score[2]) < 2:
+                return win_score[2]
+            return self.compare_two(win_score[2])
+
+        # people who have full house would be the winner. If more than one person, compare rank
+        if win_score[3]:
+            if len(win_score[3]) < 2:
+                return win_score[3]
+            return self.compare_two(win_score[3])
+
+        # people who have flush would be the winner. If more than one person, coll high_card
+        if win_score[4]:
+            if len(win_score[4]) < 2:
+                return win_score[4]
+            return self.high_card()
+
+        # people who have straight would be the winner. If more than one person, compare the highest rank
+        if win_score[5]:
+            if len(win_score[5]) < 2:
+                return win_score[5]
+            return self.compare_one(win_score[5])
+
+        # people who have three of a kind would be the winner. If more than one person, compare rank
+        if win_score[6]:
+            if len(win_score[6]) < 2:
+                return win_score[6]
+            return self.compare_three(win_score[6])
+
+        # people who have two pairs would be the winner. If more than one person, compare rank
+        if win_score[7]:
+            if len(win_score[7]) < 2:
+                return win_score[7]
+            return self.compare_three(win_score[7])
+
+        # people who have pair would be the winner. If more than one person, compare rank
+        if win_score[8]:
+            if len(win_score[8]) < 2:
+                return win_score[8]
+            return self.compare_four(win_score[8])
+
+        return self.high_card()
+
+    def score_player(self, player_id):
+        if self.is_royal_flush(player_id):
+            return 0
+        if self.is_straight_flush(player_id):
+            return 1
+        if self.has_four_of_kind(player_id):
+            return 2
+        if self.is_full_house(player_id):
+            return 3
+        if self.is_flush(player_id):
+            return 4
+        if self.is_straight(player_id):
+            return 5
+        if self.has_three_of_kind(player_id):
+            return 6
+        if self.has_two_pairs(player_id):
+            return 7
+        if self.has_one_pair(player_id):
+            return 8
+        return 9
+
+    # This method sees if all the cards have the same suit
+    def is_flush(self, player_id):
+        x = self.final_hands[player_id][0].suit
+        for i in range(1, cards.NUM_CARDS_IN_HAND):
+            if self.final_hands[player_id][i].suit != x:
+                return False
+        return True
+
+    # This method sees if the values are in sequence
+    def is_straight(self, player_id):
+        for i, c in enumerate(self.card_val[player_id]):
+            if c == 1:
+                for j in range(i + 1, i + cards.NUM_CARDS_IN_HAND):
+                    if j > 14 or self.card_val[player_id][j] == 0 :
+                        return False
+                return True
+        return False
+
+    # This method sees if the cards are same suit and in sequence
+    def is_straight_flush(self, player_id):
+        x = self.is_flush(player_id)
+        y = self.is_straight(player_id)
+        if x and y:
+            return True
+        return False
+
+    # This method sees if the cards in the hand have the same suit and the values 10, 11, 12, 13, 14
+    def is_royal_flush(self, player_id):
+        x = self.is_flush(player_id)
+        counts = self.card_val[player_id]
+        if x:
+            if counts[14] == 1 and counts[13] == 1 and counts[12] == 1 and counts[11] == 1 and counts[10] == 1:
+                return True
+        return False
+
+    # This method sees if the hand has four cards with the same value
+    def has_four_of_kind(self, player_id):
+        for _, c in enumerate(self.card_val[player_id]):
+            if c == 4:
+                return True
+        return False
+
+    # This method sees if the hand has three cards with the same value
+    def has_three_of_kind(self, player_id):
+        for _, c in enumerate(self.card_val[player_id]):
+            if c == 3:
+                return True
+        return False
+
+    # This method sees if the hand has exactly two pairs
+    def has_two_pairs(self, player_id):
+        x = 0
+        for _, c in enumerate(self.card_val[player_id]):
+            if c == 2:
+                x += 1
+            if c > 2:
+                x += c // 2
+        if x == 2:
+            return True
+        return False
+
+    # This method sees if the hand has exactly one pairs
+    def has_one_pair(self, player_id):
+        x = 0
+        for i, c in enumerate(self.card_val[player_id]):
+            if c == 2:
+                x += 1
+            if c > 2:
+                x += c // 2
+        if x == 1:
+            return True
+        return False
+
+    # This method sees if the hand contains three cards with the same value and two other cards with the same value
+    def is_full_house(self, player_id):
+        x = 0
+        y = 0
+        for _, c in enumerate(self.card_val[player_id]):
+            if c == 2:
+                x += 1
+            if c == 3:
+                y += 1
+        if x == 1 and y == 1:
+            return True
+        return False
+
+    # This method to compare the rank of the card
+    def high_card(self):
+        high_card = []
+        for p_id, counts in self.card_val.items():
+            for i, j in enumerate(counts):
+                if j:
+                    high_card[p_id].append((i,j))
+
+        for p_id in self.card_val:
+            high_card[p_id].sort(key=lambda x: (-x[0], -x[1]))
+
+        winner = -1
+        cur = tuple()
+
+
+    # count the amount of values in hand, range from 2 to 14
+    def get_counts(self, player_id):
+        counts = [0] * 15
+        for i in range(cards.NUM_CARDS_IN_HAND):
+            counts[self.final_hands[player_id][i].value] += 1
+        return counts
 
     def ack_ante(self, player_id):
         '''

@@ -105,7 +105,8 @@ def game_play(sock, manager):
             p_sequence.append(player_id)
     
     # Handle first round of betting 
-    handle_betting(manager, p_sequence)
+    p_sequence = handle_betting(manager, p_sequence)
+    print(p_sequence)
 
     # Check if has winner 
     is_over, has_won = manager.is_betting_over()
@@ -132,37 +133,10 @@ def game_play(sock, manager):
         print("Swap cards in hand")
         handle_card_trade()
 
-        # Get first player
-        print("Get first player id and play sequence")
-        p_id = init_player
-        while True :
-            if p_id in manager.players:
-                break
-            else:
-                p_id += 1
-                if player > manager.num_players:
-                    p_id = 1
-        if p_id < init_player :
-            init_player = p_id
-        init_player += 1
-
-        p_info = manager.players[p_id]
-
-        # all_notify = "The first player is player {} {}. ".format(p_id, p_info['name'])
-        # print(all_notify)
-        # manager.notify_all(all_notify)
-        msg = str(p_id)
-        manager.notify_all(msg)
+        # Send the first player for 2nd round of betting 
+        manager.notify_all(str(p_sequence[0]))
         time.sleep(0.1)
 
-        p_sequence = [] # The betting sequence 
-        for player_id in manager.players :
-            if player_id >= p_id :
-                p_sequence.append(player_id)
-        for player_id in manager.players :
-            if player_id < p_id :
-                p_sequence.append(player_id)
-        
         # Handle second round of betting 
         print("Start second round of betting ")
         handle_betting(manager, p_sequence)
@@ -355,24 +329,28 @@ def handle_betting(manager, p_sequence):
             print(response)
             parts = response.strip().split()
 
+            p_remove = []
+
             if parts[0] == 'Check' :
                 manager.bet_check(player_id)
-                conn.send("OK".encode())
+                # conn.send("OK".encode())
             elif parts[0] == 'Call' :
                 manager.bet_call(player_id)
-                conn.send("OK".encode())
+                # conn.send("OK".encode())
             elif parts[0] == 'Raise' :
                 raise_amt = int(parts[2])
                 manager.bet_raise(player_id, raise_amt)
-                conn.send("OK".encode())
+                # conn.send("OK".encode())
             elif parts[0] == 'Fold' : # should remove the hands from the final hand
                 manager.bet_fold(player_id)
-                p_sequence.remove(player_id)
-                conn.send("OK".encode())
+                # p_sequence.remove(player_id)
+                p_remove.append(player_id)
+                # conn.send("OK".encode())
             elif  parts[0] == 'Leave' :
                 manager.leave(player_id)
                 # p_sequence.remove(player_id)
-                conn.send("OK".encode())
+                p_remove.append(player_id)
+                # conn.send("OK".encode())
             else:
                 conn.send("Wrong input. Please input again.".encode())
 
@@ -380,6 +358,11 @@ def handle_betting(manager, p_sequence):
             print("Betting over is {}".format(bet_over))
             if bet_over:
                 break;
+
+        for p_id in p_remove:
+            p_sequence.remove(p_id)
+
+    return p_sequence
 
 
 def handle_check():
