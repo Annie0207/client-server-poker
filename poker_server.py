@@ -93,7 +93,9 @@ def game_play(sock, manager):
         for player_id in manager.players :
             if player_id < p_id :
                 p_sequence.append(player_id)
-        
+
+        print(p_sequence)
+        print("Start first roung of betting")
         # Handle first round of betting 
         p_sequence = handle_betting(manager, p_sequence)
         print(p_sequence)
@@ -168,9 +170,32 @@ def game_play(sock, manager):
                 print(msg)
                 conn.send(msg.encode())
 
-        # reset manager
+        # Reset manager
         manager.reset()
 
+        # Check if player want to play new game
+        print("Check if players want to start new game")
+        for p_id in manager.players:
+            p_info = manager.players[p_id]
+            conn = p_info['conn']
+
+            msg = conn.recv(BUFF_SIZE).decode()
+
+            if msg == 'N':
+                if p_id in p_sequence:
+                    p_sequence.remove(p_id)
+                manager.leave(player_id)
+
+        # Notify players to start new game or wait for other players to join
+        for p_id in manager.players:
+            p_info = manager.players[p_id]
+            conn = p_info['conn']
+            if len(manager.players) == 1:
+                msg = 'Over'
+                conn.send(msg.encode())
+            elif len(manager.players) > 1:
+                msg = 'Start'
+                conn.send(msg.encode())
 
 def wait_for_start(sock):
     '''
@@ -183,7 +208,7 @@ def wait_for_start(sock):
         # Get connection
         start = 'start'
         conn, addr = sock.accept()
-        msg = conn.recv(512).decode()
+        msg = conn.recv(BUFF_SIZE).decode()
         parts = msg.split()
 
         # Ensure start message

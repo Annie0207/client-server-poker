@@ -509,7 +509,7 @@ class GameStateManager:
         self.deck = cards.Deck()
         self.final_hands = dict()
         self.bets.reset()
-        self.fold_ids = set()
+        self.folded_ids = set()
 
 class BetInfo:
     '''
@@ -521,7 +521,6 @@ class BetInfo:
         Creates a BetInfo object.
         '''
         self.player_bets = dict()
-        self.amt_key = 'amt'
 
     def add_bet(self, player_id, amt):
         '''

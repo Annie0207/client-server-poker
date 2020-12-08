@@ -92,45 +92,75 @@ def game_play(sock, player):
         print("Start first round of betting") 
         is_leave = handle_betting(sock, player, int(first_player_id[0]))
 
+        if is_leave:
+            return
+
         # Check if the player leave the game or not
-        if not is_leave:
+        # if not is_leave:
 
-            # Check if has winner, start new game or continue a second round of betting 
-            msg = sock.recv(BUFF_SIZE).decode()
-            if msg == "Winner":
-                winner_info = sock.recv(BUFF_SIZE).decode()
-                print(winner_info)
-            elif msg == "Betting":
-                # Handle swap the cards in hand
-                print("Swap the cards")
-                handle_card_trade(sock, player)
+        # Check if has winner, start new game or continue a second round of betting 
+        msg = sock.recv(BUFF_SIZE).decode()
+        if msg == "Winner":
+            winner_info = sock.recv(BUFF_SIZE).decode()
+            print(winner_info)
+        elif msg == "Betting":
+            # Handle swap the cards in hand
+            print("Swap the cards")
+            handle_card_trade(sock, player)
 
-                # Get first player id
-                first_player_id = sock.recv(BUFF_SIZE).decode()
-                first_player_id = first_player_id.strip().split()
-                print('The first player is {}'.format(first_player_id[0]))
+            # Get first player id
+            first_player_id = sock.recv(BUFF_SIZE).decode()
+            first_player_id = first_player_id.strip().split()
+            print('The first player is {}'.format(first_player_id[0]))
 
-                # Handle second round betting
-                print("Start second round of betting")
-                is_leave = handle_betting(sock, player, int(first_player_id[0]))
+            # Handle second round betting
+            print("Start second round of betting")
+            is_leave = handle_betting(sock, player, int(first_player_id[0]))
 
-                if is_leave:
-                    return
+            if is_leave:
+                return
 
-                # Get the winner information
-                winner_info = sock.recv(BUFF_SIZE).decode()
-                print(winner_info)
+            # Get the winner information
+            winner_info = sock.recv(BUFF_SIZE).decode()
+            print(winner_info)
 
-            # Add the bets to wallet if the player win the game
-            msg = sock.recv(BUFF_SIZE).decode()
-            print(msg)
-            msg = msg.strip().split()
+        # Add the bets to wallet if the player win the game
+        msg = sock.recv(BUFF_SIZE).decode()
+        print(msg)
+        msg = msg.strip().split()
 
-            if msg[0] == 'Win':
-                player.win_pool(int(msg[1]))
+        if msg[0] == 'Win':
+            player.win_pool(int(msg[1]))
 
-            # Reset player
-            player.reset()
+        # Reset player
+        player.reset()
+
+        # Check with player if start new game
+        new_game = input("Do you want to start new game? Y/N: \n")
+
+        if new_game == 'N':
+            msg = 'Leave {}'.format(player.id)
+            sock.send(msg.encode())
+            print('player {} leave game'.format(player.id))
+            sock.close()
+            is_leave = True
+        else:
+            msg = 'Start'
+            sock.send(msg.encode())
+
+        if is_leave:
+            return 
+
+        msg = sock.recv(BUFF_SIZE).decode()
+        if msg == 'Over':
+            print("Game Over...")
+            sock.close()
+            is_leave = True
+
+        else:
+            print("Start new game...")
+            continue
+
 
     
 
