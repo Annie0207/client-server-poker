@@ -564,8 +564,9 @@ class GameStateManager:
         counts = [0] * 15
         for i in range(cards.NUM_CARDS_IN_HAND):
             counts[self.final_hands[player_id].hand[i].value] += 1
+            print(counts[self.final_hands[player_id].hand[i].value])
         return counts
-        
+
      # find the winner who has the NO.1 highest rank
     def rank_high(self, candidates):
         if len(candidates) < 1:

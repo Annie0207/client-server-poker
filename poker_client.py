@@ -136,11 +136,13 @@ def game_play(sock, player):
         player.reset()
 
         # Check with player if start new game
-        new_game = input("Do you want to start new game? Y/N: \n")
+        resp = sock.recv(BUFF_SIZE).decode()
+        print(resp)
+        new_game = input()
 
         if new_game == 'N':
             msg = 'Leave {}'.format(player.id)
-            sock.send(msg.encode())
+            sock.send(new_game.encode())
             print('player {} leave game'.format(player.id))
             sock.close()
             is_leave = True
@@ -152,14 +154,13 @@ def game_play(sock, player):
             return 
 
         msg = sock.recv(BUFF_SIZE).decode()
-        if msg == 'Over':
-            print("Game Over...")
+        if msg == 'Win':
+            print("Game Over... You win!")
             sock.close()
             is_leave = True
 
         else:
             print("Start new game...")
-            continue
 
 
     

@@ -175,27 +175,31 @@ def game_play(sock, manager):
 
         # Check if player want to play new game
         print("Check if players want to start new game")
-        for p_id in manager.players:
+        next_round_players = list(manager.players.keys())
+        for p_id in next_round_players:
             p_info = manager.players[p_id]
             conn = p_info['conn']
-
+            msg = "Do you want to start new game? Y/N:"
+            conn.send(msg.encode())
             msg = conn.recv(BUFF_SIZE).decode()
 
             if msg == 'N':
                 if p_id in p_sequence:
                     p_sequence.remove(p_id)
-                manager.leave(player_id)
+                handle_leave(manager, [], p_id)
 
         # Notify players to start new game or wait for other players to join
         for p_id in manager.players:
             p_info = manager.players[p_id]
             conn = p_info['conn']
             if len(manager.players) == 1:
-                msg = 'Over'
+                msg = 'Win'
                 conn.send(msg.encode())
+                print("Game is over. Player {} {} wins.".format(p_id, p_info['name']))
             elif len(manager.players) > 1:
                 msg = 'Start'
                 conn.send(msg.encode())
+                print("New game to start")
 
 def wait_for_start(sock):
     '''
