@@ -7,7 +7,6 @@ https://docs.google.com/document/d/1p03ydY3g0QY7WARs0TSkFAcQ-Ut0rUP-xKc40t47tTs/
 
 import cards
 
-
 class GameStateManager:
     '''
     Implements the server side API of a multi-player poker game. 
@@ -184,7 +183,7 @@ class GameStateManager:
 
     def leave(self, player_id):
         '''
-        Removes the given player from the game, if the player exists.  
+        Removes the given player from the game, if the player exists. Notify all players.
         Returns the player value. Raises a KeyError if the player is not found.
 
         player_id: int - The ID of the player.
@@ -192,6 +191,7 @@ class GameStateManager:
         self.left_ids.add(player_id)
         player = self.players[player_id]
         del self.players[player_id]
+        self.notify_all(str(player_id) + "left the game")
         return player  # ID is already known, as it was passed in
 
     def bet_raise(self, player_id, amt):
@@ -235,6 +235,7 @@ class GameStateManager:
     def bet_fold(self, player_id):
         '''
         Indicates that the given player has folded during a round of betting.
+        Notify all the players.
 
         player_id: int - The ID of the player.
         '''
@@ -275,9 +276,10 @@ class GameStateManager:
         Gets and removes the given number of cards from the game deck. Returns
         cards in a list.
         '''
-        if not num_cards >= 0 and num_cards <= cards.NUM_CARDS_IN_HAND:
+        if num_cards < 0 or num_cards > cards.NUM_CARDS_IN_HAND:
             raise ValueError(
                 'invalid number of cards, must be within the range of cards in a hand')
+
         card_list = []
         for _ in range(num_cards):
             card_list.append(self.deck.deal_card())
@@ -407,12 +409,14 @@ class GameStateManager:
                     if j > 14 or self.card_val[player_id][j] == 0 :
                         return False
                 return True
+
         return False
 
     # This method sees if the cards are same suit and in sequence
     def is_straight_flush(self, player_id):
         x = self.is_flush(player_id)
         y = self.is_straight(player_id)
+
         if x and y:
             return True
         return False
@@ -426,10 +430,24 @@ class GameStateManager:
                 return True
         return False
 
+
+    # This method sees if the hand has five cards with the same value
+    def has_five_of_kind(self, player_id):
+        x = self.final_hands[player_id][0].rank
+        for j in range(1, cards.NUM_CARDS_IN_HAND):
+            if self.final_hands[player_id][j].rank != x:
+                return False
+        return True
+
     # This method sees if the hand has four cards with the same value
     def has_four_of_kind(self, player_id):
-        for _, c in enumerate(self.card_val[player_id]):
-            if c == 4:
+        for i in range(cards.NUM_CARDS_IN_HAND):
+            x = self.final_hands[player_id][i].rank
+            y = 0
+            for j in range(cards.NUM_CARDS_IN_HAND):
+                if self.final_hands[player_id][j].rank:
+                    y += 1
+            if y == 4:
                 return True
         return False
 
@@ -442,12 +460,14 @@ class GameStateManager:
 
     # This method sees if the hand has exactly two pairs
     def has_two_pairs(self, player_id):
+
         x = 0
         for _, c in enumerate(self.card_val[player_id]):
             if c == 2:
                 x += 1
             if c > 2:
                 x += c // 2
+
         if x == 2:
             return True
         return False
@@ -466,12 +486,14 @@ class GameStateManager:
 
     # This method sees if the hand contains three cards with the same value and two other cards with the same value
     def is_full_house(self, player_id):
+
         x = 0
         y = 0
         for _, c in enumerate(self.card_val[player_id]):
             if c == 2:
                 x += 1
             if c == 3:
+
                 y += 1
         if x == 1 and y == 1:
             return True
@@ -497,6 +519,7 @@ class GameStateManager:
         counts = [0] * 15
         for i in range(cards.NUM_CARDS_IN_HAND):
             counts[self.final_hands[player_id][i].value] += 1
+
         return counts
 
     def ack_ante(self, player_id):
