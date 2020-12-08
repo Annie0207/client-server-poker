@@ -165,6 +165,7 @@ def game_play(sock, manager):
                 msg = "Win {}".format(amt)
                 print(msg)
                 conn.send(msg.encode())
+                time.sleep(0.1)
             else:
                 msg = "Lose"
                 print(msg)
@@ -193,9 +194,9 @@ def game_play(sock, manager):
             p_info = manager.players[p_id]
             conn = p_info['conn']
             if len(manager.players) == 1:
-                msg = 'Win'
+                msg = 'Over'
                 conn.send(msg.encode())
-                print("Game is over. Player {} {} wins.".format(p_id, p_info['name']))
+                print("Game is over.")
             elif len(manager.players) > 1:
                 msg = 'Start'
                 conn.send(msg.encode())
@@ -331,6 +332,7 @@ def handle_deal(manager):
     Note: no fold is considered as no player can call fold at this time
     '''
     for p_id, value in manager.players.items() :
+        print(p_id)
         cards = manager.get_cards(CARD_AMOUNT)
         print(cards)
         conn = value['conn']

@@ -141,7 +141,7 @@ def game_play(sock, player):
         new_game = input()
 
         if new_game == 'N':
-            msg = 'Leave {}'.format(player.id)
+            #msg = 'Leave {}'.format(player.id)
             sock.send(new_game.encode())
             print('player {} leave game'.format(player.id))
             sock.close()
@@ -154,8 +154,8 @@ def game_play(sock, player):
             return 
 
         msg = sock.recv(BUFF_SIZE).decode()
-        if msg == 'Win':
-            print("Game Over... You win!")
+        if msg == 'Over':
+            print("Game Over... ")
             sock.close()
             is_leave = True
 
@@ -225,6 +225,7 @@ def handle_antes(sock, player):
     # get the response from server and parse ante_amt and get_response 
     response = sock.recv(BUFF_SIZE).decode()
     response = response.strip().split()
+    print(response)
     ante_amt = int(response[0])
     get_response = int(response[1])
 
@@ -348,12 +349,9 @@ def handle_betting(sock, player, first_player_id):
                 sock.send(msg.encode())
                 break
             elif action[0] == 'leave':
-                player.ack_player_left(player.name)
-                msg = "Leave {}".format(player.id)
-                sock.send(msg.encode())
-                sock.close()
-                is_leave = True
-                break
+                if handle_leave(player, sock):
+                    is_leave = True
+                    break
             else:
                 continue
     return is_leave
@@ -417,6 +415,13 @@ def handle_raise(sock, player, raise_amt):
     valid_amt = player.wallet - call_amt
     print("Raise failed, please raise valid amount between 1 to {}".format(valid_amt))
     return False
+
+def handle_leave(player, sock):
+    player.ack_player_left(player.name)
+    msg = "Leave {}".format(player.id)
+    sock.send(msg.encode())
+    sock.close()
+    return True
 
 
 def handle_betting_info():

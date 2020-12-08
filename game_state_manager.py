@@ -273,7 +273,8 @@ class GameStateManager:
         card_list = []
         for _ in range(num_cards):
             card_list.append(self.deck.deal_card())
-
+        
+        print(card_list)
         return card_list
 
     def store_hand(self, player_id, card_list):
