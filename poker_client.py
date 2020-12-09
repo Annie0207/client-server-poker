@@ -80,6 +80,8 @@ def game_play(sock, player):
         print("New game start")
         ante_true = handle_antes(sock, player)
 
+        print(ante_true)
+
         if not ante_true: 
             return
 
@@ -446,13 +448,16 @@ def handle_card_trade(sock, player):
         print("Please choose which card index to discard. The card index is 1-indexed. You can discard at most 3 cards. \n" + 
                "Example: If you want to discard card 1 and 3, type in '1 3'")
         discard_cards = input()
-        if len(discard_cards) == '':
+        if len(discard_cards) == 0:
             return
-        discard_list = discard_cards.split()
+        sock.send(discard_cards.encode()) # Discard card step is also required in manager
+        discard_list = discard_cards.strip().split()
         card_list = []
         for card in discard_list:
             card_list.append(int(card))
         player.delete_cards(card_list)
+        resp = sock.recv(BUFF_SIZE).decode()
+        print(resp)
         msg = "{}".format(len(card_list))
         sock.send(msg.encode())
         handle_deal(sock, player)

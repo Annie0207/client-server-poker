@@ -292,6 +292,23 @@ class GameStateManager:
 
         self.final_hands[player_id] = hand
 
+    def add_cards(self, player_id, card_list):
+        for card in card_list:
+            self.final_hands[player_id].add_card(card)
+    
+    def delete_cards(self, player_id, card_list):
+        l = len(card_list)
+
+        if l < 1:
+            raise ValueError('must discard at least one card in the list')
+        if l > cards.MAX_DISCARD:
+            raise ValueError('cannot dicard more cards than allowed in a hand')
+        card_list.sort(reverse = True)
+
+        for card in card_list:
+            self.final_hands[player_id].remove_card(card)
+
+
     def remove_hand(self, player_id):
         if self.final_hands:
             del self.final_hands[player_id]
@@ -371,7 +388,9 @@ class GameStateManager:
         the winner.
         '''
         # NOTE: Needs to empty the evaluated hands after, add back to deck,
-        # and shuffle for next round.
+        # and shuffle for next round. No need to shuffle. We have a reset function
+        # This is to check how many users left and their p_id
+        print(self.final_hands)
         for p_id in self.final_hands:
             counts = self.get_counts(p_id)
             self.card_val[p_id] = counts
@@ -564,8 +583,8 @@ class GameStateManager:
     def get_counts(self, player_id):
         counts = [0] * 15
         for i in range(cards.NUM_CARDS_IN_HAND):
+            print(self.final_hands[player_id].hand[i].value)
             counts[self.final_hands[player_id].hand[i].value] += 1
-            print(counts[self.final_hands[player_id].hand[i].value])
         return counts
 
      # find the winner who has the NO.1 highest rank

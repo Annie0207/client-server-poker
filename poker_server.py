@@ -201,7 +201,7 @@ def game_play(sock, manager):
             elif len(manager.players) > 1:
                 msg = 'Start'
                 conn.send(msg.encode())
-                print("New game to start")
+                print("New game to start {}".format(p_id))
 
 def wait_for_start(sock):
     '''
@@ -312,6 +312,7 @@ def handle_antes(sock, manager):
     count = manager.num_players
     # for id in range(1, count + 1):
     for p_id in list(manager.players.keys()):
+        print(p_id)
         p_info = manager.players[p_id]
         conn = p_info['conn']
         msg = conn.recv(BUFF_SIZE).decode()
@@ -439,6 +440,15 @@ def handle_card_trade(manager, p_sequence):
         resp = conn.recv(BUFF_SIZE).decode()
         if resp == "N":
             continue
+        #
+        print(resp)
+        discard_list = resp.strip().split()
+        card_list = []
+        for card in discard_list:
+            card_list.append(int(card))
+        manager.delete_cards(p_id, card_list)
+        conn.send("OK".encode())
+        resp = conn.recv(BUFF_SIZE).decode()
         num_change = int(resp)
         cards = manager.get_cards(num_change)
         print(cards)
@@ -449,7 +459,7 @@ def handle_card_trade(manager, p_sequence):
         conn.send(msg.encode())
         response = conn.recv(BUFF_SIZE).decode()
         if response == 'Received' :
-            manager.store_hand(p_id, cards)
+            manager.add_cards(p_id, cards)
             print("cards received to {}".format(manager.players[p_id]['name']))
     print("Card sent complete")
 
