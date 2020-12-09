@@ -62,7 +62,6 @@ def game_play(sock, manager):
     # Notify players of winner, show hands (unless all but one folded)
     # Repeat steps until all players have left but one
     # pass
-    init_player = 1
     while manager.get_curr_num_players() > 1: 
         print("New game start")
         handle_antes(sock, manager)
