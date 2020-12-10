@@ -309,6 +309,21 @@ class GameStateManager:
 
         self.final_hands[player_id] = hand
 
+    def add_cards(self, player_id, card_list):
+        for card in card_list:
+            self.final_hands[player_id].add_card(card)
+
+    def delete_cards(self, player_id, card_list):
+        l = len(card_list)
+        if l < 1:
+            raise ValueError('must discard at least one card in the list')
+        if l > cards.MAX_DISCARD:
+            raise ValueError('cannot dicard more cards than allowed in a hand')
+        card_list.sort(reverse=True)
+
+        for card in card_list:
+            self.final_hands[player_id].remove_card(card)
+
     def evaluate_hands(self):
         '''
         Evaluates player hands at the end of a round of betting and determines
