@@ -16,6 +16,7 @@ RANKS = set(['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'])
 
 # At this point, only 5 Card Draw is available
 NUM_CARDS_IN_HAND = 5
+MAX_DISCARD = 3
 
 
 class Deck:
@@ -98,6 +99,33 @@ class Card:
         self.suit = suit
         self.rank = rank
 
+        if self.rank == 'A':
+            self.value = 14
+        if self.rank == 'K':
+            self.value = 13
+        if self.rank == 'Q':
+            self.value = 12
+        if self.rank == 'J':
+            self.value = 11
+        if self.rank == '10':
+            self.value = 10
+        if self.rank == '9':
+            self.value = 9
+        if self.rank == '8':
+            self.value = 8
+        if self.rank == '7':
+            self.value = 7
+        if self.rank == '6':
+            self.value = 6
+        if self.rank == '5':
+            self.value = 5
+        if self.rank == '4':
+            self.value = 4
+        if self.rank == '3':
+            self.value = 3
+        if self.rank == '2':
+            self.value = 2
+
         # Assign UTF suit also
         if suit == 'H':
             self.utf_suit = '♥'    # U+2665
@@ -169,8 +197,9 @@ class Hand:
 
         card_id: int - the 1-indexed position of the card to remove
         '''
+        print(card_id)
         if not 0 < card_id <= len(self.hand):
-            raise ValueError('card_id must be a valid index (1 to len)')
+            raise ValueError('card_id must be a valid index (1 to 5)')
 
         card = self.hand[card_id - 1]
         self.hand.remove(card)

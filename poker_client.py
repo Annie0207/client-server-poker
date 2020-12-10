@@ -14,6 +14,7 @@ START = 'start'
 JOIN = 'join'
 BEGIN = 'begin'
 NOTIFY = 'notify'
+DISCARD = 'discard'
 
 # Message buffer size (somewhat arbitrary, should be fine for all messages)
 BUFF_SIZE = 512
@@ -74,31 +75,41 @@ def game_play(sock, player):
     # Start next hand
 
     # pass
-    # while player.wallet > 0:
-    handle_antes(sock, player)
-    handle_deal(sock, player)
-    # Get first player id
-    first_player_id = sock.recv(BUFF_SIZE).decode()
-    first_player_id = first_player_id.strip().split()
-    print('The first player is {}'.format(first_player_id[0]))
+    is_leave = False
+    while not is_leave:  
+        print("New game start")
+        ante_true = handle_antes(sock, player)
 
-    # Handle first round of betting
-    print("Start first round of betting") 
-    is_leave = handle_betting(sock, player, int(first_player_id[0]))
+        print(ante_true)
 
-    # Check if the player leave the game or not
-    if not is_leave:
+        if not ante_true: 
+            return
+
+        handle_deal(sock, player)
+        # Get first player id
+        first_player_id = sock.recv(BUFF_SIZE).decode()
+        first_player_id = first_player_id.strip().split()
+        print('The first player is {}'.format(first_player_id[0]))
+
+        # Handle first round of betting
+        print("Start first round of betting") 
+        is_leave = handle_betting(sock, player, int(first_player_id[0]))
+
+        if is_leave:
+            return
+
+        # Check if the player leave the game or not
+        # if not is_leave:
 
         # Check if has winner, start new game or continue a second round of betting 
         msg = sock.recv(BUFF_SIZE).decode()
         if msg == "Winner":
             winner_info = sock.recv(BUFF_SIZE).decode()
             print(winner_info)
-            # continue
         elif msg == "Betting":
             # Handle swap the cards in hand
             print("Swap the cards")
-            handle_card_trade()
+            handle_card_trade(sock, player)
 
             # Get first player id
             first_player_id = sock.recv(BUFF_SIZE).decode()
@@ -107,11 +118,53 @@ def game_play(sock, player):
 
             # Handle second round betting
             print("Start second round of betting")
-            handle_betting(sock, player, int(first_player_id[0]))
+            is_leave = handle_betting(sock, player, int(first_player_id[0]))
+
+            if is_leave:
+                return
 
             # Get the winner information
             winner_info = sock.recv(BUFF_SIZE).decode()
             print(winner_info)
+
+        # Add the bets to wallet if the player win the game
+        msg = sock.recv(BUFF_SIZE).decode()
+        print(msg)
+        msg = msg.strip().split()
+
+        if msg[0] == 'Win':
+            player.win_pool(int(msg[1]))
+
+        # Reset player
+        player.reset()
+
+        # Check with player if start new game
+        resp = sock.recv(BUFF_SIZE).decode()
+        print(resp)
+        new_game = input()
+
+        if new_game == 'N':
+            #msg = 'Leave {}'.format(player.id)
+            sock.send(new_game.encode())
+            print('player {} leave game'.format(player.id))
+            sock.close()
+            is_leave = True
+        else:
+            msg = 'Start'
+            sock.send(msg.encode())
+
+        if is_leave:
+            return 
+
+        msg = sock.recv(BUFF_SIZE).decode()
+        if msg == 'Over':
+            print("Game Over... ")
+            sock.close()
+            is_leave = True
+
+        else:
+            print("Start new game...")
+
 
     
 
@@ -169,11 +222,13 @@ def handle_antes(sock, player):
 
     sock: the socket
     player: the player
-
+    
+    return a bool ante result 
     '''
     # get the response from server and parse ante_amt and get_response 
     response = sock.recv(BUFF_SIZE).decode()
     response = response.strip().split()
+    print(response)
     ante_amt = int(response[0])
     get_response = int(response[1])
 
@@ -185,14 +240,14 @@ def handle_antes(sock, player):
                 msg = 'leave {}'.format(player.id)
                 sock.send(msg.encode())
                 print('player {} leave game'.format(player.id))
-                break
+                sock.close()
+                return False
             elif resp == 'ante':
-                ante_helper(sock, player, ante_amt)        
-                break
+                return ante_helper(sock, player, ante_amt)              
             else:
                 continue
     else: # default get_response = 0, every player ante the game 
-        ante_helper(sock, player, ante_amt)  
+        return ante_helper(sock, player, ante_amt)  
 
 def ante_helper(sock, player, ante_amt):
     '''
@@ -209,14 +264,15 @@ def ante_helper(sock, player, ante_amt):
     if ante_result:
         msg = 'ante {} {}'.format(
         player.id, ante_amt)
-
         sock.send(msg.encode())
         print('player {} ante {}'.format(player.id, ante_amt))
     else:
         msg = 'leave {}'.format(player.id)
         sock.send(msg.encode())
-        print('player {} ante failed and leave game'.format(player.id)) 
+        print('player {} ante failed and leave game'.format(player.id))
+        sock.close()
 
+    return ante_result
 
 def handle_deal(sock, player):
     '''
@@ -270,47 +326,38 @@ def handle_betting(sock, player, first_player_id):
         max_bet = int(bet_info[0])
         cur_bet = int(bet_info[1])
         call_amt = max_bet - cur_bet 
+        first_player = True if bet_info[2] == "True" else False
 
         while True: 
             # Get player's action from command line       
             action = player.get_action()
             print(action)
             action = action.strip().split()
+            if action[0] != 'check' and first_player:
+                print("First player must check.")
+                continue
 
             # handle the action 
-            if action[0] == 'check' and player.id == first_player_id:
+            if action[0] == 'check' and first_player:
                 if handle_check(sock, player, cur_bet):
                     break
-                else:
-                    continue
             elif action[0] == 'call':
                 if handle_call(sock, player, call_amt):
                     break
-                else:
-                    continue
             elif action[0] == 'raise':
                 raise_amt = int(action[2])
                 if handle_raise(sock, player, raise_amt):
                     break
-                else:
-                    continue
             elif action[0] == 'fold':
                 msg = "Fold {}".format(player.id)
                 sock.send(msg.encode())
                 break
             elif action[0] == 'leave':
-                player.ack_player_left(player.name)
-                msg = "Leave {}".format(player.id)
-                sock.send(msg.encode())
-                sock.close()
-                is_leave = True
-                break
+                if handle_leave(player, sock):
+                    is_leave = True
+                    break
             else:
                 continue
-
-        # # Get response from server
-        # response = sock.recv(BUFF_SIZE).decode()
-        # print(response)
     return is_leave
 
 def handle_check(sock, player, cur_bet):
@@ -373,13 +420,51 @@ def handle_raise(sock, player, raise_amt):
     print("Raise failed, please raise valid amount between 1 to {}".format(valid_amt))
     return False
 
+def handle_leave(player, sock):
+    player.ack_player_left(player.name)
+    msg = "Leave {}".format(player.id)
+    sock.send(msg.encode())
+    sock.close()
+    return True
+
 
 def handle_betting_info():
     pass
 
 
-def handle_card_trade():
-    pass
+def handle_card_trade(sock, player):
+    resp = sock.recv(BUFF_SIZE).decode()
+    if resp.startswith(DISCARD):
+        print("Your current card is \n")
+        player.hand.print_hand()
+        start = len(DISCARD) + 1  # +1 to get past space in message
+        discard = input("Are you going to swap cards? Y/N: \n")
+        while discard != 'Y' :
+            if discard == 'N':
+                sock.send("N".encode())
+                return
+            discard = input("Are you going to swap cards? Y/N: \n")
+        print(resp[start:])
+        print("Please choose which card index to discard. The card index is 1-indexed. You can discard at most 3 cards. \n" + 
+               "Example: If you want to discard card 1 and 3, type in '1 3'")
+        discard_cards = input()
+        if len(discard_cards) == 0:
+            return
+        sock.send(discard_cards.encode()) # Discard card step is also required in manager
+        discard_list = discard_cards.strip().split()
+        card_list = []
+        for card in discard_list:
+            card_list.append(int(card))
+        player.delete_cards(card_list)
+        resp = sock.recv(BUFF_SIZE).decode()
+        print(resp)
+        msg = "{}".format(len(card_list))
+        sock.send(msg.encode())
+        handle_deal(sock, player)
+
+
+
+        
 
 
 def get_cmd_args(argv):

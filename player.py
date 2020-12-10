@@ -254,6 +254,23 @@ class Player:
         for card in card_list:
             self.hand.add_card(card)
 
+    def delete_cards(self, card_list):
+        '''
+        Delete each of the cards in the list to this players hand. There must be 
+        at lease one card and no more than MAX_DISCARD cards. Otherwise, we will 
+        throw a HandFullError
+        '''
+        l = len(card_list)
+
+        if l < 1:
+            raise ValueError('must discard at least one card in the list')
+        if l > cards.MAX_DISCARD:
+            raise ValueError('cannot dicard more cards than allowed in a hand')
+        
+        card_list.sort(reverse = True)
+        for card in card_list:
+            self.hand.remove_card(card)
+
     def win_pool(self, amt):
         '''
         Adds betting pool winnings to this players wallet. Should only be called when
@@ -308,3 +325,9 @@ class Player:
         print('Highest bet (call amount): ', '$', max_bet, sep='')
         print('Your current bet: ', '$', current_bet, sep='')
         print('Your wallet: ', '$', self.wallet, sep='')
+
+    def reset(self):
+        '''
+        Reset the player hand
+        '''
+        self.hand = cards.Hand(cards.NUM_CARDS_IN_HAND)

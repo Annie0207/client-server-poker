@@ -7,7 +7,6 @@ https://docs.google.com/document/d/1p03ydY3g0QY7WARs0TSkFAcQ-Ut0rUP-xKc40t47tTs/
 
 import cards
 
-
 class GameStateManager:
     '''
     Implements the server side API of a multi-player poker game. 
@@ -18,7 +17,6 @@ class GameStateManager:
     def __init__(self, num_players, wallet_amt, ante_amt):
         '''
         Creates the GameManager.
-
         num_players: int - Number of players in the game. Min: 2, Max: 5
         wallet_amt: int - Initial amount of money in each player's wallet. 
                           Basically, the buy in amount. Min: 5
@@ -40,7 +38,6 @@ class GameStateManager:
         This is the only command available in the server at start-up. Once 
         called, the server moves into a state of waiting for the remaining 
         players to join.
-
         num_players: int - Number of players in the game. Min: 2, Max: 5
         wallet_amt: int - Initial amount of money in each player's wallet. 
                           Basically, the buy in amount. Min: 5
@@ -57,6 +54,7 @@ class GameStateManager:
         self.turn_id = 1  # ID of the player who's turn it is
         self.folded_ids = set()  # IDs of players who have folded during betting
         self.left_ids = set()
+        self.card_val = {} #record the number of cards for each player
 
     def join(self, connection, address_tup, player_name=''):
         '''
@@ -64,7 +62,6 @@ class GameStateManager:
         provide the player's name here as a convenience, in addition to the 
         set_name function. Raises a GameFullError if the game already has the
         set number of players.
-
         address_tup: (IP, PORT) - The address tuple provided by a client message
                                   to the server.
         player_name: str - Optional, empty string by default. The player's 
@@ -98,7 +95,6 @@ class GameStateManager:
         '''
         Sends the given message to all players in the game. Keywords need to 
         be included by the caller if they are needed.
-
         message: str - A message to send to every player.
         '''
         for p_id in self.players:
@@ -109,7 +105,6 @@ class GameStateManager:
         '''
         Sends the given player the message. Keywords need to be included by 
         the caller if they are needed.
-
         player_id: int - The ID of the player.
         message: str - A message to send to the player.
         '''
@@ -125,7 +120,6 @@ class GameStateManager:
     def get_player_conn(self, player_id):
         '''
         Gets the connection object for a specific player.
-
         player_id: int - The ID of the player.
         '''
         return self.players[player_id][self.p_conn_key]
@@ -133,7 +127,6 @@ class GameStateManager:
     def set_name(self, player_id, name):
         '''
         Sets the name of the player with the given ID.
-
         player_id: int - The ID of the player.
         name: string - The player’s name.
         '''
@@ -150,7 +143,6 @@ class GameStateManager:
         amount is, and how much this player has bet so far. Value returned is
         a tuple of the form:
         (pool_amt, max_bet, current_bet)
-
         player_id: int - The ID of the player.
         '''
         pool_amt = self.bets.get_pool_amt()
@@ -186,19 +178,18 @@ class GameStateManager:
         '''
         Removes the given player from the game, if the player exists.  
         Returns the player value. Raises a KeyError if the player is not found.
-
         player_id: int - The ID of the player.
         '''
         self.left_ids.add(player_id)
         player = self.players[player_id]
         del self.players[player_id]
+        self.remove_hand(player_id)
         return player  # ID is already known, as it was passed in
 
     def bet_raise(self, player_id, amt):
         '''
         Indicates the given player wants to raise by the given amount. Player
         will have to check that they have the funds to raise before calling this.
-
         player_id: int - The ID of the player.
         amt: int - The amount to raise.
         '''
@@ -215,38 +206,38 @@ class GameStateManager:
         Indicates the given player wants to call during a round of betting. 
         Player will have to check that they have the funds to raise before 
         calling this.
-
         player_id: int - The ID of the player.
         '''
         _, max_bet, curr_bet = self.bet_info(player_id)
         call_amt = max_bet - curr_bet
+
         self.bets.add_bet(player_id, call_amt)
 
     def bet_check(self, player_id):
         '''
         Indicates that the given player has checked during a round of betting. 
         Only allowed by the person to start any given round of betting.
-
         player_id: int - The ID of the player.
         '''
-        check_amt = self.bets.get_player_bet(player_id)
-        self.bets.add_bet(player_id, check_amt)
+        cur_bet = self.bets.get_player_bet(player_id)
+        self.bets.add_bet(player_id, cur_bet)
 
     def bet_fold(self, player_id):
         '''
         Indicates that the given player has folded during a round of betting.
-
+        Notify all the players.
         player_id: int - The ID of the player.
         '''
         self.folded_ids.add(player_id)
+        self.remove_hand(player_id)
         # self.notify_all(str(player_id) + "folded the game")
 
     def is_betting_over(self):
         '''
         Determines if a round of betting has ended or not. A round of betting is
-        over if all players besides those who have folded have bet the same 
-        amount, or if all players except one have folded. If the latter, the 
-        one player left has won the hand. If the former, all players must have 
+        over if all players besides those who have folded have bet the same
+        amount, or if all players except one have folded. If the latter, the
+        one player left has won the hand. If the former, all players must have
         had at least one chance to bet for a round to be over.
         Returns a boolean tuple indicating if betting is over and if the hand
         has been won: (betting_over, hand_won)
@@ -275,19 +266,20 @@ class GameStateManager:
         Gets and removes the given number of cards from the game deck. Returns
         cards in a list.
         '''
-        if not num_cards >= 0 and num_cards <= cards.NUM_CARDS_IN_HAND:
+        if num_cards < 0 or num_cards > cards.NUM_CARDS_IN_HAND:
             raise ValueError(
                 'invalid number of cards, must be within the range of cards in a hand')
+
         card_list = []
         for _ in range(num_cards):
             card_list.append(self.deck.deal_card())
-
+        
+        print(card_list)
         return card_list
 
     def store_hand(self, player_id, card_list):
         '''
         Takes the players hand and stores it to be evaluated.
-
         player_id: int - The ID of the player.
         cards: Card - The cards in the player's hand
         '''
@@ -300,12 +292,32 @@ class GameStateManager:
 
         self.final_hands[player_id] = hand
 
+    def add_cards(self, player_id, card_list):
+        for card in card_list:
+            self.final_hands[player_id].add_card(card)
+    
+    def delete_cards(self, player_id, card_list):
+        l = len(card_list)
 
+        if l < 1:
+            raise ValueError('must discard at least one card in the list')
+        if l > cards.MAX_DISCARD:
+            raise ValueError('cannot dicard more cards than allowed in a hand')
+        card_list.sort(reverse = True)
+
+        for card in card_list:
+            self.final_hands[player_id].remove_card(card)
+
+
+    def remove_hand(self, player_id):
+        if self.final_hands:
+            del self.final_hands[player_id]
+    '''
     def evaluate_hands(self):
         '''
-        Evaluates player hands at the end of a round of betting and determines
-        the winner.
-        '''
+        #Evaluates player hands at the end of a round of betting and determines
+        #the winner.
+    '''
         # NOTE: Needs to empty the evaluated hands after, add back to deck,
         # and shuffle for next round.
         for p_id in self.final_hands:
@@ -369,6 +381,77 @@ class GameStateManager:
             return self.compare_four(win_score[8])
 
         return self.high_card()
+    '''
+    def evaluate_hands(self):
+        '''
+        Evaluates player hands at the end of a round of betting and determines
+        the winner.
+        '''
+        # NOTE: Needs to empty the evaluated hands after, add back to deck,
+        # and shuffle for next round. No need to shuffle. We have a reset function
+        # This is to check how many users left and their p_id
+        print(self.final_hands)
+        for p_id in self.final_hands:
+            counts = self.get_counts(p_id)
+            self.card_val[p_id] = counts
+
+        win_score = [[] for _ in range(10)]
+        for p_id in self.final_hands:
+            win_score[self.score_player(p_id)].append(p_id)
+
+        # all people have royal flush would be the winner
+        if win_score[0]:
+            return win_score[0]
+
+        # people who have straight flush would be the winner. If more than one person, compare the highest rank
+        if win_score[1]:
+            if len(win_score[1]) < 2:
+                return win_score[1]
+            return self.rank_high(win_score[1])
+
+        # people who have four of a kind would be the winner. If more than one person, compare the highest rank
+        if win_score[2]:
+            if len(win_score[2]) < 2:
+                return win_score[2]
+            return self.rank_high(win_score[2])
+
+        # people who have full house would be the winner. If more than one person, compare the highest rank
+        if win_score[3]:
+            if len(win_score[3]) < 2:
+                return win_score[3]
+            return self.rank_high(win_score[3])
+
+        # people who have flush would be the winner. If more than one person, compare the highest rank
+        if win_score[4]:
+            if len(win_score[4]) < 2:
+                return win_score[4]
+            return self.rank_high(win_score[4])
+
+        # people who have straight would be the winner. If more than one person, compare the highest rank
+        if win_score[5]:
+            if len(win_score[5]) < 2:
+                return win_score[5]
+            return self.rank_high(win_score[5])
+
+        # people who have three of a kind would be the winner. If more than one person, compare the highest rank
+        if win_score[6]:
+            if len(win_score[6]) < 2:
+                return win_score[6]
+            return self.rank_high(win_score[6])
+
+        # people who have two pairs would be the winner. If more than one person, compare the highest rank
+        if win_score[7]:
+            if len(win_score[7]) < 2:
+                return win_score[7]
+            return self.rank_high(win_score[7])
+
+        # people who have pair would be the winner. If more than one person, compare the highest rank
+        if win_score[8]:
+            if len(win_score[8]) < 2:
+                return win_score[8]
+            return self.rank_high(win_score[8])
+
+        return self.high_card()
 
     def score_player(self, player_id):
         if self.is_royal_flush(player_id):
@@ -393,9 +476,9 @@ class GameStateManager:
 
     # This method sees if all the cards have the same suit
     def is_flush(self, player_id):
-        x = self.final_hands[player_id][0].suit
+        x = self.final_hands[player_id].hand[0].suit
         for i in range(1, cards.NUM_CARDS_IN_HAND):
-            if self.final_hands[player_id][i].suit != x:
+            if self.final_hands[player_id].hand[i].suit != x:
                 return False
         return True
 
@@ -477,6 +560,7 @@ class GameStateManager:
             return True
         return False
 
+    '''
     # This method to compare the rank of the card
     def high_card(self):
         high_card = []
@@ -490,24 +574,59 @@ class GameStateManager:
 
         winner = -1
         cur = tuple()
+    '''
+    def high_card(self):
+        return self.rank_high(list(self.final_hands.keys()))
 
 
     # count the amount of values in hand, range from 2 to 14
     def get_counts(self, player_id):
         counts = [0] * 15
         for i in range(cards.NUM_CARDS_IN_HAND):
-            counts[self.final_hands[player_id][i].value] += 1
+            print(self.final_hands[player_id].hand[i].value)
+            counts[self.final_hands[player_id].hand[i].value] += 1
         return counts
+
+     # find the winner who has the NO.1 highest rank
+    def rank_high(self, candidates):
+        if len(candidates) < 1:
+            raise ValueError(
+                'no one to check')
+
+        if len(candidates) == 1:
+            return candidates
+
+        winner = []
+        cur_rank = -1
+        for i in candidates:
+            for j in range(14, -1, -1):
+                if self.card_val[i][j]:
+                    top = j
+                    if top > cur_rank:
+                        cur_rank = top
+                        winner = [i]
+                    elif top == cur_rank:
+                        winner.append(i)
+                    break
+        return winner
 
     def ack_ante(self, player_id):
         '''
         Indicates that the given player has decided to ante and adds the ante 
         amount to the betting pool.
-
         player_id: int - The ID of the player. 
         '''
         self.bets.add_bet(player_id, self.ante_amt)
 
+
+    def reset(self):
+        '''
+        Reset the manager deck, final_hands, bets, fold_ids
+        '''
+        self.deck = cards.Deck()
+        self.final_hands = dict()
+        self.bets.reset()
+        self.folded_ids = set()
 
 class BetInfo:
     '''
@@ -519,7 +638,6 @@ class BetInfo:
         Creates a BetInfo object.
         '''
         self.player_bets = dict()
-        self.amt_key = 'amt'
 
     def add_bet(self, player_id, amt):
         '''
@@ -530,8 +648,6 @@ class BetInfo:
             self.player_bets[player_id] = amt
         else:
             self.player_bets[player_id] += amt
-
-        print("Player {} total bet amount {}".format(player_id, self.player_bets[player_id]))
 
     def get_max_bet(self):
         '''
@@ -558,7 +674,6 @@ class BetInfo:
     def get_player_bet(self, player_id):
         '''
         Get the amount a specific player has bet during a round.
-
         player_id: int - The ID of a player in the game.
         '''
         if player_id not in self.player_bets:

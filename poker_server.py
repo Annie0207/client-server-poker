@@ -14,6 +14,7 @@ BUFF_SIZE = 512
 BEGIN = 'begin'
 NOTIFY = 'notify'
 CARD_AMOUNT = 5
+DISCARD = 'discard'
 
 def main(argv):
     # Parse command line arguments
@@ -61,103 +62,146 @@ def game_play(sock, manager):
     # Notify players of winner, show hands (unless all but one folded)
     # Repeat steps until all players have left but one
     # pass
-    # while manager.get_curr_num_players() > 1: 
-    init_player = 1
-    handle_antes(sock, manager)
-    handle_deal(manager)
-        #find first player and set the sequence 
-        #handle betting // call raise fold leave  
-        #check get_curr_num_players == 1, get winner: notify :  continue
-        #get_curr_num_players > 1 : 
-            #swap cards
-            #second betting
-            #check get_curr_num_players == 1, get winner: notify :  continue
-            #evaluate winner -> notify winner 
-     
-     # Get first player
-    p_id = init_player
-    while True :
-        if p_id in manager.players:
-            break
-        else:
-            p_id += 1
-            if player > manager.num_players: # player ???
-                p_id = 1
-    if p_id < init_player:
-        init_player = p_id
-    init_player += 1
+    while manager.get_curr_num_players() > 1: 
+        print("New game start")
+        handle_antes(sock, manager)
+        handle_deal(manager)
+         
+         # Get first player
+        init_player = manager.turn_id
+        manager.increment_turn()
+        '''
+        while True :
+            if p_id in manager.players:
+                break
+            else:
+                p_id += 1
+                p_id = int(p_id % manager.num_players)
+            
+        if p_id < init_player:
+            init_player = p_id
+        init_player += 1
+        '''
 
-    p_info = manager.players[p_id]
-
-    # all_notify = "The first player is player {} {}. ".format(p_id, p_info['name'])
-    # print(all_notify)
-    # manager.notify_all(all_notify)
-    msg = str(p_id)
-    manager.notify_all(msg)
-    time.sleep(0.1)
-
-    p_sequence = [] # The betting sequence 
-    for player_id in manager.players :
-        if player_id >= p_id :
-            p_sequence.append(player_id)
-    for player_id in manager.players :
-        if player_id < p_id :
-            p_sequence.append(player_id)
-    
-    # Handle first round of betting 
-    p_sequence = handle_betting(manager, p_sequence)
-    print(p_sequence)
-
-    # Check if has winner 
-    is_over, has_won = manager.is_betting_over()
-    manager.notify_all("Over")
-    time.sleep(0.1)
-
-    if has_won:
-        winner = int
-        for p_id in manager.players:
-            if p_id not in manager.folded_ids:
-                winner = p_id
-
-        manager.notify_all("Winner")
+        msg = str(init_player)
+        manager.notify_all(msg)
         time.sleep(0.1)
 
-        manager.notify_all("Player {} has won the game!".format(winner))
-        time.sleep(0.1)
+        p_sequence = [] # The betting sequence 
+        for player_id in manager.players :
+            if player_id >= init_player :
+                p_sequence.append(player_id)
+        for player_id in manager.players :
+            if player_id < init_player :
+                p_sequence.append(player_id)
 
-        # continue
-    else:
-        manager.notify_all("Betting")
-        time.sleep(0.1)
+        print(p_sequence)
+        print("Start first roung of betting")
+        # Handle first round of betting 
+        p_sequence = handle_betting(manager, p_sequence)
+        print(p_sequence)
 
-        print("Swap cards in hand")
-        handle_card_trade()
-
-        # Send the first player for 2nd round of betting 
-        manager.notify_all(str(p_sequence[0]))
-        time.sleep(0.1)
-
-        # Handle second round of betting 
-        print("Start second round of betting ")
-        handle_betting(manager, p_sequence)
-
-        # Check if has winner or evaluate the winner
+        # Check if has winner 
         is_over, has_won = manager.is_betting_over()
         manager.notify_all("Over")
         time.sleep(0.1)
-    
+
+        winner = []
+
         if has_won:
             for p_id in manager.players:
                 if p_id not in manager.folded_ids:
-                    winner = p_id
+                    winner.append(p_id)
+
+            manager.notify_all("Winner")
+            time.sleep(0.1)
+
+            manager.notify_all("Player {} has won the game!".format(winner))
+            time.sleep(0.1)
+
         else:
-            winner = handle_evaluate_winner()
+            manager.notify_all("Betting")
+            time.sleep(0.1)
 
-        # Notify all the winner information
-        manager.notify_all("Player {} has won the game!".format(winner))
-        time.sleep(0.1)
+            print("Swap cards in hand")
+            handle_card_trade(manager, p_sequence)
 
-    manager.bets.reset()
+            # Send the first player for 2nd round of betting 
+            manager.notify_all(str(p_sequence[0]))
+            time.sleep(0.1)
+
+            # Handle second round of betting 
+            print("Start second round of betting ")
+            handle_betting(manager, p_sequence)
+
+            # Check if has winner or evaluate the winner
+            is_over, has_won = manager.is_betting_over()
+            manager.notify_all("Over")
+            time.sleep(0.1)
+        
+            if has_won:
+                for p_id in manager.players:
+                    if p_id not in manager.folded_ids:
+                        winner.append(p_id)
+            else:
+                winner = handle_evaluate_winner(manager)
+
+            # Notify all the winner information
+            manager.notify_all("Player {} has won the game!".format(winner))
+            time.sleep(0.1)
+
+        # give bet to the winner
+        total_bets = manager.bets.get_pool_amt()
+        count = len(winner)
+        win_amt = int(total_bets / count)
+        win_remainder = int(total_bets % count)
+
+        for p_id in manager.players:
+            p_info = manager.players[p_id]
+            conn = p_info['conn']
+
+            if p_id in winner:
+                amt = win_amt + (1 if win_remainder > 0 else 0)
+                win_remainder -= 1; 
+                msg = "Win {}".format(amt)
+                print(msg)
+                conn.send(msg.encode())
+                time.sleep(0.1)
+            else:
+                msg = "Lose"
+                print(msg)
+                conn.send(msg.encode())
+
+        # Reset manager
+        manager.reset()
+
+        # Check if player want to play new game
+        print("Check if players want to start new game")
+        next_round_players = list(manager.players.keys())
+        for p_id in next_round_players:
+            p_info = manager.players[p_id]
+            conn = p_info['conn']
+            msg = "Do you want to start new game? Y/N:"
+            conn.send(msg.encode())
+            msg = conn.recv(BUFF_SIZE).decode()
+
+            if msg == 'N':
+                if p_id in p_sequence:
+                    p_sequence.remove(p_id)
+                handle_leave(manager, [], p_id)
+
+        # Notify players to start new game or wait for other players to join
+        for p_id in manager.players:
+            p_info = manager.players[p_id]
+            conn = p_info['conn']
+            if len(manager.players) == 1:
+                msg = 'Over'
+                conn.send(msg.encode())
+                print("Game is over.")
+            elif len(manager.players) > 1:
+                msg = 'Start'
+                conn.send(msg.encode())
+                print("New game to start {}".format(p_id))
 
 def wait_for_start(sock):
     '''
@@ -170,7 +214,7 @@ def wait_for_start(sock):
         # Get connection
         start = 'start'
         conn, addr = sock.accept()
-        msg = conn.recv(512).decode()
+        msg = conn.recv(BUFF_SIZE).decode()
         parts = msg.split()
 
         # Ensure start message
@@ -266,8 +310,11 @@ def handle_antes(sock, manager):
     time.sleep(0.1)
     
     count = manager.num_players
-    for id in range(1, count + 1):
-        conn = manager.players[id]['conn']
+    # for id in range(1, count + 1):
+    for p_id in list(manager.players.keys()):
+        print(p_id)
+        p_info = manager.players[p_id]
+        conn = p_info['conn']
         msg = conn.recv(BUFF_SIZE).decode()
         parts = msg.split()
 
@@ -286,7 +333,9 @@ def handle_deal(manager):
     Each player will get 5 cards. Since all cards are shuffled, the card will be distributed by current sequence
     Note: no fold is considered as no player can call fold at this time
     '''
+    print("Start deal")
     for p_id, value in manager.players.items() :
+        print(p_id)
         cards = manager.get_cards(CARD_AMOUNT)
         print(cards)
         conn = value['conn']
@@ -295,7 +344,7 @@ def handle_deal(manager):
             msg += card.__repr__() + " "
             print(card.__str__())
         conn.send(msg.encode())
-        response = conn.recv(512).decode()
+        response = conn.recv(BUFF_SIZE).decode()
         if response == 'Received' :
             manager.store_hand(p_id, cards)
             print("cards received to {}".format(value['name']))
@@ -308,6 +357,7 @@ def handle_betting(manager, p_sequence):
     may call check call raise
     '''
     bet_over = False
+    first_player = True
     while not bet_over:
         p_remove = []
         for player_id in p_sequence :
@@ -316,36 +366,26 @@ def handle_betting(manager, p_sequence):
             #get bet info for this player
             pool_amt, max_amt, curr_amt = manager.bet_info(player_id)
             print(str(player_id) + " " + str(pool_amt) + " " + str(max_amt) + " " + str(curr_amt))
-            message = str(max_amt) + " " + str(curr_amt)
+            message = str(max_amt) + " " + str(curr_amt) + " " + str(first_player)
             # print(message)
             conn.send(message.encode())
+            first_player = False
             
             response = conn.recv(BUFF_SIZE).decode()
             print(response)
             parts = response.strip().split()
            
             if parts[0] == 'Check' :
-                manager.bet_check(player_id)
-                # conn.send("OK".encode())
+                handle_check(manager, player_id)
             elif parts[0] == 'Call' :
-                manager.bet_call(player_id)
-                # conn.send("OK".encode())
+                handle_call(manager, player_id)
             elif parts[0] == 'Raise' :
                 raise_amt = int(parts[2])
-                manager.bet_raise(player_id, raise_amt)
-                # conn.send("OK".encode())
+                handle_raise(manager, player_id, raise_amt)
             elif parts[0] == 'Fold' : # should remove the hands from the final hand
-                p_remove.append(player_id)
-                manager.bet_fold(player_id)
-                # p_sequence.remove(player_id)
-                # conn.send("OK".encode())
+                handle_fold(manager, player_id, p_remove)
             elif  parts[0] == 'Leave' :
-                p_remove.append(player_id)
-                manager.leave(player_id)
-                # p_sequence.remove(player_id)
-                # conn.send("OK".encode())
-            else:
-                conn.send("Wrong input. Please input again.".encode())
+                handle_leave(manager, p_remove, player_id)
 
             bet_over, win = manager.is_betting_over()
             print("Betting over is {}".format(bet_over))
@@ -354,33 +394,79 @@ def handle_betting(manager, p_sequence):
 
         for p_id in p_remove:
             p_sequence.remove(p_id)
-            print("remove {} in p_sequence".format(p_id))
 
     return p_sequence
 
 
-def handle_check():
-    pass
+def handle_check(manager, player_id):
+    manager.bet_check(player_id)
+    # conn.send("OK".encode())
 
 
 def handle_call(manager, player_id):
-    pass
+    manager.bet_call(player_id)
+    # conn.send("OK".encode())
 
 
-def handle_raise(manager, player_id, amt):
-    pass
+def handle_raise(manager, player_id, raise_amt):
+    manager.bet_raise(player_id, raise_amt)
+    # conn.send("OK".encode())
 
+def handle_fold(manager, player_id, p_remove):
+    p_remove.append(player_id)
+    manager.bet_fold(player_id)
+    # conn.send("OK".encode())
+
+def handle_leave(manager, p_remove, player_id):
+    p_remove.append(player_id)
+    manager.leave(player_id)
+    # conn.send("OK".encode())
 
 def handle_betting_info():
     pass
 
 
-def handle_card_trade():
-    pass
+def handle_card_trade(manager, p_sequence):
+    '''
+    The players will take turns to discard cards and draw new cards.
+    1. Send the player request to discard cards.
+    2. Player send discard card successful info
+    3. Manager gives new card to player
+    '''
+    for p_id in p_sequence:
+        conn = manager.players[p_id]['conn']
+        message = DISCARD + " Please discard cards"
+        conn.send(message.encode())
+        resp = conn.recv(BUFF_SIZE).decode()
+        if resp == "N":
+            continue
+        #
+        print(resp)
+        discard_list = resp.strip().split()
+        card_list = []
+        for card in discard_list:
+            card_list.append(int(card))
+        manager.delete_cards(p_id, card_list)
+        conn.send("OK".encode())
+        resp = conn.recv(BUFF_SIZE).decode()
+        num_change = int(resp)
+        cards = manager.get_cards(num_change)
+        print(cards)
+        msg = ""
+        for card in cards:
+            msg += card.__repr__() + " "
+        print(msg)
+        conn.send(msg.encode())
+        response = conn.recv(BUFF_SIZE).decode()
+        if response == 'Received' :
+            manager.add_cards(p_id, cards)
+            print("cards received to {}".format(manager.players[p_id]['name']))
+    print("Card sent complete")
 
-
-def handle_evaluate_winner():
-    pass
+def handle_evaluate_winner(manager):
+    winner = manager.evaluate_hands() #  Return a list of player_id who wins
+    return winner
+   
 
 
 def get_cmd_args(argv):
