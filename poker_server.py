@@ -318,7 +318,7 @@ def handle_antes(sock, manager):
         msg = conn.recv(BUFF_SIZE).decode()
         parts = msg.split()
 
-        if get_response == 1 and parts[0] == 'leave':
+        if parts[0] == 'leave':
             p_id = int(parts[1])
             player = manager.leave(p_id)
         elif parts[0] == 'ante':

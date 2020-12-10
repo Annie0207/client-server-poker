@@ -563,6 +563,15 @@ class GameStateManager:
         '''
         self.bets.add_bet(player_id, self.ante_amt)
 
+    def reset(self):
+        '''
+        Reset the manager deck, final_hands, bets, fold_ids
+        '''
+        self.deck = cards.Deck()
+        self.final_hands = dict()
+        self.bets.reset()
+        self.folded_ids = set()
+
 
 class BetInfo:
     '''
@@ -574,7 +583,6 @@ class BetInfo:
         Creates a BetInfo object.
         '''
         self.player_bets = dict()
-        self.amt_key = 'amt'
 
     def add_bet(self, player_id, amt):
         '''
@@ -595,15 +603,14 @@ class BetInfo:
         p_ids = []
         max_bet = 0
         d = self.player_bets
-        a = self.amt_key
 
         # Need to find max bet, then add players to list
         for key in d:
-            if d[key][a] > max_bet:
-                max_bet = d[key][a]
+            if d[key] > max_bet:
+                max_bet = d[key]
 
         for key in d:
-            if d[key][a] == max_bet:
+            if d[key] == max_bet:
                 p_ids.append(key)
 
         return (max_bet, p_ids)
@@ -624,11 +631,10 @@ class BetInfo:
         Returns the total amount in the betting pool.
         '''
         d = self.player_bets
-        a = self.amt_key
 
         total = 0
         for key in d:
-            total += d[key][a]
+            total += d[key]
 
         return total
 
